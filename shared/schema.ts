@@ -34,5 +34,10 @@ export const insertInventorySchema = createInsertSchema(inventory).omit({
   lastUpdated: true
 });
 
+export const updateInventorySchema = insertInventorySchema.partial().omit({
+  userId: true
+});
+
 export type InsertInventory = z.infer<typeof insertInventorySchema>;
+export type UpdateInventory = z.infer<typeof updateInventorySchema>;
 export type Inventory = typeof inventory.$inferSelect;
