@@ -1,12 +1,31 @@
-import { Leaf, Menu } from "lucide-react";
+import { Leaf, Menu, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ThemeToggle } from "./theme-toggle";
+import { useAuth } from "@/hooks/useAuth";
+import type { User } from "@shared/schema";
 
 interface HeaderProps {
   onMenuClick?: () => void;
 }
 
 export default function Header({ onMenuClick }: HeaderProps) {
+  const { user, isAuthenticated } = useAuth();
+
+  const handleLogout = () => {
+    window.location.href = "/api/logout";
+  };
+
+  const getUserInitials = (user: User) => {
+    if (user.firstName && user.lastName) {
+      return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
+    }
+    if (user.email) {
+      return user.email[0].toUpperCase();
+    }
+    return "U";
+  };
+
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto px-4">
@@ -39,6 +58,36 @@ export default function Header({ onMenuClick }: HeaderProps) {
           
           <div className="flex items-center gap-2">
             <ThemeToggle />
+            {isAuthenticated && user && (() => {
+              const typedUser = user as User;
+              return (
+                <>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={typedUser.profileImageUrl || undefined} />
+                      <AvatarFallback className="bg-primary/10 text-primary font-medium">
+                        {getUserInitials(typedUser)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="hidden sm:inline" data-testid="text-user-name">
+                      {typedUser.firstName && typedUser.lastName 
+                        ? `${typedUser.firstName} ${typedUser.lastName}`
+                        : typedUser.email || "User"
+                      }
+                    </span>
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={handleLogout}
+                    data-testid="button-logout"
+                    title="Logout"
+                  >
+                    <LogOut className="h-4 w-4" />
+                  </Button>
+                </>
+              );
+            })()}
           </div>
         </div>
       </div>
