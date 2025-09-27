@@ -7,8 +7,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 
-// Mock user ID - in a real app this would come from authentication
-const MOCK_USER_ID = "mock-user-123";
 
 interface InventoryItem {
   id: string;
@@ -127,14 +125,9 @@ const applicationGuide: ApplicationWeek[] = [
 export default function PurchaseRecommendations({ lawnSize }: PurchaseRecommendationsProps) {
   const scaleFactor = lawnSize / 100; // Base calculations are per 100m²
   
-  // Fetch inventory data
+  // Fetch inventory data for authenticated user
   const { data: inventory = [] } = useQuery<InventoryItem[]>({
-    queryKey: ["/api/inventory", MOCK_USER_ID],
-    queryFn: async (): Promise<InventoryItem[]> => {
-      const response = await fetch(`/api/inventory/${MOCK_USER_ID}`);
-      if (!response.ok) throw new Error("Failed to fetch inventory");
-      return response.json();
-    },
+    queryKey: ["/api/inventory"],
   });
 
   // Calculate purchase recommendations

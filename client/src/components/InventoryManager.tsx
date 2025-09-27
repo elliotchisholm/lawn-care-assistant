@@ -33,8 +33,6 @@ import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 
-// Mock user ID - in a real app this would come from authentication
-const MOCK_USER_ID = "mock-user-123";
 
 // Form validation schemas
 const inventoryFormSchema = z.object({
@@ -135,7 +133,7 @@ function InventoryForm({ item, open, onOpenChange }: InventoryFormProps) {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/inventory", MOCK_USER_ID] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
       toast({ title: "Success", description: "Inventory item added successfully" });
       onOpenChange(false);
       form.reset();
@@ -145,7 +143,7 @@ function InventoryForm({ item, open, onOpenChange }: InventoryFormProps) {
   const updateMutation = useMutation({
     mutationFn: async (data: InventoryFormData) => {
       if (!item) return;
-      const response = await fetch(`/api/inventory/${item.id}/${MOCK_USER_ID}`, {
+      const response = await fetch(`/api/inventory/${item.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -157,7 +155,7 @@ function InventoryForm({ item, open, onOpenChange }: InventoryFormProps) {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/inventory", MOCK_USER_ID] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
       toast({ title: "Success", description: "Inventory item updated successfully" });
       onOpenChange(false);
     },
@@ -302,9 +300,9 @@ export default function InventoryManager() {
 
   // Fetch inventory data
   const { data: inventory = [], isLoading } = useQuery<InventoryItem[]>({
-    queryKey: ["/api/inventory", MOCK_USER_ID],
+    queryKey: ["/api/inventory"],
     queryFn: async (): Promise<InventoryItem[]> => {
-      const response = await fetch(`/api/inventory/${MOCK_USER_ID}`);
+      const response = await fetch(`/api/inventory`);
       if (!response.ok) throw new Error("Failed to fetch inventory");
       return response.json();
     },
@@ -313,13 +311,13 @@ export default function InventoryManager() {
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const response = await fetch(`/api/inventory/${id}/${MOCK_USER_ID}`, {
+      const response = await fetch(`/api/inventory/${id}`, {
         method: "DELETE",
       });
       if (!response.ok) throw new Error("Failed to delete inventory item");
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/inventory", MOCK_USER_ID] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
       toast({ title: "Success", description: "Inventory item deleted successfully" });
     },
   });
