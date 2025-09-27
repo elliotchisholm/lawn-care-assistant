@@ -7,6 +7,7 @@ import LawnSizeCalculator from "@/components/LawnSizeCalculator";
 import ProductCard from "@/components/ProductCard";
 import WeeklySchedule from "@/components/WeeklySchedule";
 import InventoryManager from "@/components/InventoryManager";
+import PurchaseRecommendations from "@/components/PurchaseRecommendations";
 
 // Mock data based on NZLA application guide
 interface ApplicationWeek {
@@ -148,6 +149,9 @@ export default function Home() {
             
             {/* Weekly Schedule */}
             <WeeklySchedule currentWeek={weekNumber} />
+            
+            {/* Purchase Recommendations */}
+            <PurchaseRecommendations lawnSize={lawnSize} />
           </div>
         </div>
         
