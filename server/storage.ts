@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type Inventory, type InsertInventory, type UpdateInventory, inventory } from "@shared/schema";
+import { type User, type UpsertUser, type Inventory, type InsertInventory, type UpdateInventory, users, inventory } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
 import { eq, and } from "drizzle-orm";
@@ -7,9 +7,9 @@ import { eq, and } from "drizzle-orm";
 // you might need
 
 export interface IStorage {
+  // User operations required for Replit Auth
   getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  upsertUser(user: UpsertUser): Promise<User>;
   
   // Inventory management methods
   getUserInventory(userId: string): Promise<Inventory[]>;
@@ -19,27 +19,25 @@ export interface IStorage {
   deleteInventoryItem(id: string, userId: string): Promise<boolean>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
-
-  constructor() {
-    this.users = new Map();
-  }
-
+export class DatabaseStorage implements IStorage {
+  // User operations required for Replit Auth
   async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
-  }
-
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
+  async upsertUser(userData: UpsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(userData)
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          ...userData,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
     return user;
   }
 
@@ -83,4 +81,4 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
