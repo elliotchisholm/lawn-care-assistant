@@ -2,15 +2,31 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertInventorySchema, updateInventorySchema } from "@shared/schema";
+import { setupAuth, isAuthenticated } from "./replitAuth";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Inventory management routes
-  
-  // Get all inventory items for a user
-  app.get("/api/inventory/:userId", async (req, res) => {
+  // Setup authentication middleware
+  await setupAuth(app);
+
+  // Auth routes
+  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
-      const { userId } = req.params;
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      res.json(user);
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // Protected inventory management routes
+  
+  // Get all inventory items for authenticated user
+  app.get("/api/inventory", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
       const items = await storage.getUserInventory(userId);
       res.json(items);
     } catch (error) {
@@ -19,10 +35,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create new inventory item
-  app.post("/api/inventory", async (req, res) => {
+  // Create new inventory item for authenticated user
+  app.post("/api/inventory", isAuthenticated, async (req: any, res) => {
     try {
-      const validatedData = insertInventorySchema.parse(req.body);
+      const userId = req.user.claims.sub;
+      const validatedData = insertInventorySchema.parse({ ...req.body, userId });
       const item = await storage.createInventoryItem(validatedData);
       res.status(201).json(item);
     } catch (error) {
@@ -35,10 +52,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Update inventory item
-  app.put("/api/inventory/:id/:userId", async (req, res) => {
+  // Update inventory item for authenticated user
+  app.put("/api/inventory/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const { id, userId } = req.params;
+      const { id } = req.params;
+      const userId = req.user.claims.sub;
       const validatedData = updateInventorySchema.parse(req.body);
       const updatedItem = await storage.updateInventoryItem(id, userId, validatedData);
       if (!updatedItem) {
@@ -56,10 +74,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Delete inventory item
-  app.delete("/api/inventory/:id/:userId", async (req, res) => {
+  // Delete inventory item for authenticated user
+  app.delete("/api/inventory/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const { id, userId } = req.params;
+      const { id } = req.params;
+      const userId = req.user.claims.sub;
       const deleted = await storage.deleteInventoryItem(id, userId);
       if (!deleted) {
         res.status(404).json({ error: "Inventory item not found" });
@@ -72,10 +91,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get specific inventory item by product name
-  app.get("/api/inventory/:userId/:productName", async (req, res) => {
+  // Get specific inventory item by product name for authenticated user
+  app.get("/api/inventory/product/:productName", isAuthenticated, async (req: any, res) => {
     try {
-      const { userId, productName } = req.params;
+      const { productName } = req.params;
+      const userId = req.user.claims.sub;
       const item = await storage.getInventoryItem(userId, decodeURIComponent(productName));
       if (!item) {
         res.status(404).json({ error: "Inventory item not found" });
