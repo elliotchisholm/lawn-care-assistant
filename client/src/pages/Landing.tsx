@@ -1,7 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { LogIn, Leaf, Calendar, ShoppingCart, BarChart3 } from "lucide-react";
+import { LogIn, Leaf, Calendar, ShoppingCart, BarChart3, ExternalLink } from "lucide-react";
+import { Link } from "wouter";
 
 export default function Landing() {
   const handleLogin = () => {
@@ -45,12 +46,18 @@ export default function Landing() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <ul className="space-y-2 text-sm text-muted-foreground">
+              <ul className="space-y-2 text-sm text-muted-foreground mb-4">
                 <li>• NZLA-certified product recommendations</li>
                 <li>• Scaled quantities for your lawn size</li>
                 <li>• Tank mixing instructions</li>
                 <li>• Application timing guidance</li>
               </ul>
+              <Link href="/schedule">
+                <Button variant="outline" size="sm" className="w-full" data-testid="button-view-schedule">
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  View Weekly Schedule
+                </Button>
+              </Link>
             </CardContent>
           </Card>
 
