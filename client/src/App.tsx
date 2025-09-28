@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import Home from "@/pages/Home";
 import Landing from "@/pages/Landing";
+import Schedule from "@/pages/Schedule";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -13,6 +14,10 @@ function Router() {
 
   return (
     <Switch>
+      {/* Public routes - available without authentication */}
+      <Route path="/schedule" component={Schedule} />
+      
+      {/* Conditional routes based on authentication */}
       {isLoading || !isAuthenticated ? (
         <Route path="/" component={Landing} />
       ) : (
