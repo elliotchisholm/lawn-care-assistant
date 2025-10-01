@@ -77,22 +77,25 @@ export default function ProductCard({
       case 'sufficient':
         return {
           icon: CheckCircle,
-          color: 'text-green-600',
-          bgColor: 'bg-green-50 border-green-200',
+          color: 'text-green-600 dark:text-green-500',
+          bgColor: 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800',
+          textColor: 'text-green-900 dark:text-green-100',
           badge: 'sufficient'
         };
       case 'insufficient':
         return {
           icon: AlertTriangle,
-          color: 'text-yellow-600',
-          bgColor: 'bg-yellow-50 border-yellow-200',
+          color: 'text-yellow-600 dark:text-yellow-500',
+          bgColor: 'bg-yellow-50 dark:bg-yellow-950/30 border-yellow-200 dark:border-yellow-800',
+          textColor: 'text-yellow-900 dark:text-yellow-100',
           badge: 'low'
         };
       case 'out_of_stock':
         return {
           icon: XCircle,
-          color: 'text-red-600',
-          bgColor: 'bg-red-50 border-red-200',
+          color: 'text-red-600 dark:text-red-500',
+          bgColor: 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800',
+          textColor: 'text-red-900 dark:text-red-100',
           badge: 'out'
         };
     }
@@ -125,7 +128,7 @@ export default function ProductCard({
             return (
               <div 
                 key={index} 
-                className={`flex items-center justify-between p-3 rounded-md border ${statusDisplay.bgColor}`}
+                className={`flex items-center justify-between p-3 rounded-md border ${statusDisplay.bgColor} ${statusDisplay.textColor}`}
                 data-testid={`product-${index}`}
               >
                 <div className="flex-1">
@@ -145,7 +148,7 @@ export default function ProductCard({
                       {statusDisplay.badge}
                     </Badge>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-xs opacity-70 mt-1">
                     Current stock: {inventoryStatus.currentQuantity}{product.unit}
                   </p>
                 </div>
@@ -153,10 +156,10 @@ export default function ProductCard({
                   <p className="font-semibold text-lg" data-testid={`text-quantity-${index}`}>
                     {scaledQuantity.toFixed(0)}{product.unit}
                   </p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs opacity-70">
                     ({product.quantity}{product.unit}/100m²)
                   </p>
-                  <p className={`text-xs font-medium ${inventoryStatus.sufficient ? statusDisplay.color : 'text-red-600'}`}>
+                  <p className={`text-xs font-medium ${inventoryStatus.sufficient ? statusDisplay.color : statusDisplay.color}`}>
                     {inventoryStatus.message}
                   </p>
                 </div>
