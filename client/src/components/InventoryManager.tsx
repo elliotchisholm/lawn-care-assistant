@@ -120,12 +120,18 @@ function InventoryForm({ item, open, onOpenChange }: InventoryFormProps) {
 
   const createMutation = useMutation({
     mutationFn: async (data: InventoryFormData) => {
+      // Validate that quantity is a valid number (but send as string for decimal precision)
+      const quantity = parseFloat(data.currentQuantity);
+      if (isNaN(quantity) || quantity <= 0) {
+        throw new Error("Quantity must be a valid positive number");
+      }
+      
       const response = await fetch("/api/inventory", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           productName: data.productName,
-          currentQuantity: data.currentQuantity,
+          currentQuantity: data.currentQuantity, // Send as string for decimal precision
           unit: data.unit,
           notes: data.notes || undefined,
         }),
@@ -133,6 +139,15 @@ function InventoryForm({ item, open, onOpenChange }: InventoryFormProps) {
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: "Failed to create inventory item" }));
+        
+        // Handle Zod validation errors with specific field messages
+        if (errorData.details && Array.isArray(errorData.details)) {
+          const fieldErrors = errorData.details.map((err: any) => 
+            `${err.path?.join('.')} ${err.message}`
+          ).join(', ');
+          throw new Error(fieldErrors);
+        }
+        
         throw new Error(errorData.error || errorData.message || "Failed to create inventory item");
       }
       return response.json();
@@ -159,12 +174,18 @@ function InventoryForm({ item, open, onOpenChange }: InventoryFormProps) {
     mutationFn: async (data: InventoryFormData) => {
       if (!item) throw new Error("No item to update");
       
+      // Validate that quantity is a valid number (but send as string for decimal precision)
+      const quantity = parseFloat(data.currentQuantity);
+      if (isNaN(quantity) || quantity <= 0) {
+        throw new Error("Quantity must be a valid positive number");
+      }
+      
       const response = await fetch(`/api/inventory/${item.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           productName: data.productName,
-          currentQuantity: data.currentQuantity,
+          currentQuantity: data.currentQuantity, // Send as string for decimal precision
           unit: data.unit,
           notes: data.notes || undefined,
         }),
@@ -172,6 +193,15 @@ function InventoryForm({ item, open, onOpenChange }: InventoryFormProps) {
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: "Failed to update inventory item" }));
+        
+        // Handle Zod validation errors with specific field messages
+        if (errorData.details && Array.isArray(errorData.details)) {
+          const fieldErrors = errorData.details.map((err: any) => 
+            `${err.path?.join('.')} ${err.message}`
+          ).join(', ');
+          throw new Error(fieldErrors);
+        }
+        
         throw new Error(errorData.error || errorData.message || "Failed to update inventory item");
       }
       return response.json();
