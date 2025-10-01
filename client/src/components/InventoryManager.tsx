@@ -44,19 +44,20 @@ const inventoryFormSchema = z.object({
 
 type InventoryFormData = z.infer<typeof inventoryFormSchema>;
 
-// Common NZLA product options
+// Common NZLA product options (matches WeeklySchedule product names)
 const commonProducts = [
-  "NZLA Wetter",
+  "Wetter 3W",
   "Nurture", 
   "Root Health",
   "Humic+",
-  "NZLA Iron+",
-  "NZLA Amino",
-  "NZLA Restore",
+  "Iron+",
+  "Amino",
+  "Restore",
   "Liquid N",
   "Liquid Boost", 
   "Grub+",
-  "NZLA All Seasons"
+  "All Seasons",
+  "Charger"
 ];
 
 const commonUnits = [
