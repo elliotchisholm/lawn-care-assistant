@@ -124,40 +124,72 @@ function InventoryForm({ item, open, onOpenChange }: InventoryFormProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...data,
-          userId: MOCK_USER_ID,
+          productName: data.productName,
           currentQuantity: data.currentQuantity,
+          unit: data.unit,
+          notes: data.notes || undefined,
         }),
       });
-      if (!response.ok) throw new Error("Failed to create inventory item");
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Failed to create inventory item" }));
+        throw new Error(errorData.error || errorData.message || "Failed to create inventory item");
+      }
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
-      toast({ title: "Success", description: "Inventory item added successfully" });
+      toast({ 
+        title: "Success", 
+        description: "Inventory item added successfully",
+      });
       onOpenChange(false);
       form.reset();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add inventory item. Please try again.",
+        variant: "destructive",
+      });
     },
   });
 
   const updateMutation = useMutation({
     mutationFn: async (data: InventoryFormData) => {
-      if (!item) return;
+      if (!item) throw new Error("No item to update");
+      
       const response = await fetch(`/api/inventory/${item.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...data,
+          productName: data.productName,
           currentQuantity: data.currentQuantity,
+          unit: data.unit,
+          notes: data.notes || undefined,
         }),
       });
-      if (!response.ok) throw new Error("Failed to update inventory item");
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Failed to update inventory item" }));
+        throw new Error(errorData.error || errorData.message || "Failed to update inventory item");
+      }
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
-      toast({ title: "Success", description: "Inventory item updated successfully" });
+      toast({ 
+        title: "Success", 
+        description: "Inventory item updated successfully",
+      });
       onOpenChange(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update inventory item. Please try again.",
+        variant: "destructive",
+      });
     },
   });
 
@@ -314,11 +346,25 @@ export default function InventoryManager() {
       const response = await fetch(`/api/inventory/${id}`, {
         method: "DELETE",
       });
-      if (!response.ok) throw new Error("Failed to delete inventory item");
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Failed to delete inventory item" }));
+        throw new Error(errorData.error || errorData.message || "Failed to delete inventory item");
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
-      toast({ title: "Success", description: "Inventory item deleted successfully" });
+      toast({ 
+        title: "Success", 
+        description: "Inventory item deleted successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete inventory item. Please try again.",
+        variant: "destructive",
+      });
     },
   });
 
