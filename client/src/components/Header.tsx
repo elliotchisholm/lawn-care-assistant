@@ -28,37 +28,38 @@ export default function Header({ onMenuClick }: HeaderProps) {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 transition-all">
       <div className="container mx-auto px-4">
-        <div className="flex h-16 items-center justify-between">
-          <div className="flex items-center gap-4">
+        <div className="flex h-16 items-center justify-between gap-2">
+          <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
             {onMenuClick && (
               <Button 
                 variant="ghost" 
                 size="icon" 
                 onClick={onMenuClick}
                 data-testid="button-menu"
+                className="shrink-0"
               >
                 <Menu className="h-5 w-5" />
               </Button>
             )}
-            <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary">
+            <div className="flex items-center gap-2 md:gap-3 min-w-0">
+              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary shrink-0">
                 <Leaf className="h-5 w-5 text-primary-foreground" />
               </div>
-              <div>
-                <h1 className="text-lg font-semibold" data-testid="text-app-title">
+              <div className="min-w-0">
+                <h1 className="text-sm md:text-lg font-semibold truncate" data-testid="text-app-title">
                   NZLA Lawn Care Assistant
                 </h1>
-                <p className="text-xs text-muted-foreground hidden sm:block">
+                <p className="text-xs text-muted-foreground hidden md:block">
                   Professional lawn care application guide
                 </p>
               </div>
             </div>
           </div>
           
-          <div className="flex items-center gap-2">
-            <Link href="/schedule">
+          <div className="flex items-center gap-1 md:gap-2 shrink-0">
+            <Link href="/schedule" className="hidden md:inline-block">
               <Button 
                 variant="ghost" 
                 size="sm"
@@ -73,39 +74,47 @@ export default function Header({ onMenuClick }: HeaderProps) {
               target="_blank"
               rel="noopener noreferrer"
               data-testid="link-nzla-external"
+              className="hidden sm:inline-block"
             >
               <Button 
                 variant="ghost" 
                 size="sm"
                 className="gap-2"
               >
-                NZLA Guide
+                <span className="hidden lg:inline">NZLA Guide</span>
                 <ExternalLink className="h-4 w-4" />
               </Button>
             </a>
             <ThemeToggle />
             {isAuthenticated && user && (
               <>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground">
                   <Avatar className="h-8 w-8">
                     <AvatarImage src={(user as User).profileImageUrl || undefined} />
                     <AvatarFallback className="bg-primary/10 text-primary font-medium">
                       {getUserInitials(user as User)}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="hidden sm:inline" data-testid="text-user-name">
+                  <span className="hidden md:inline truncate max-w-[120px]" data-testid="text-user-name">
                     {(user as User).firstName && (user as User).lastName 
                       ? `${(user as User).firstName} ${(user as User).lastName}`
                       : (user as User).email || "User"
                     }
                   </span>
                 </div>
+                <Avatar className="h-8 w-8 sm:hidden">
+                  <AvatarImage src={(user as User).profileImageUrl || undefined} />
+                  <AvatarFallback className="bg-primary/10 text-primary font-medium">
+                    {getUserInitials(user as User)}
+                  </AvatarFallback>
+                </Avatar>
                 <Button 
                   variant="ghost" 
                   size="icon" 
                   onClick={handleLogout}
                   data-testid="button-logout"
                   title="Logout"
+                  className="shrink-0"
                 >
                   <LogOut className="h-4 w-4" />
                 </Button>
