@@ -1,5 +1,5 @@
 export function normalizeToBaseUnit(quantity: number, unit: string): { quantity: number; unit: string } {
-  const lowerUnit = unit.toLowerCase();
+  const lowerUnit = unit.trim().toLowerCase();
   
   // Weight conversions - normalize to grams
   if (lowerUnit === 'kg') {
