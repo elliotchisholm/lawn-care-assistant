@@ -1,4 +1,5 @@
-import { Leaf, Menu, LogOut, ExternalLink } from "lucide-react";
+import { Leaf, Menu, LogOut, ExternalLink, LogIn, LayoutDashboard } from "lucide-react";
+import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ThemeToggle } from "./theme-toggle";
@@ -11,9 +12,14 @@ interface HeaderProps {
 
 export default function Header({ onMenuClick }: HeaderProps) {
   const { user, isAuthenticated } = useAuth();
+  const [location] = useLocation();
 
   const handleLogout = () => {
     window.location.href = "/api/logout";
+  };
+
+  const handleLogin = () => {
+    window.location.href = "/api/login";
   };
 
   const getUserInitials = (user: User) => {
@@ -75,8 +81,21 @@ export default function Header({ onMenuClick }: HeaderProps) {
               </Button>
             </a>
             <ThemeToggle />
-            {isAuthenticated && user && (
+            {isAuthenticated && user ? (
               <>
+                {location !== "/dashboard" && (
+                  <Link href="/dashboard">
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      className="gap-2"
+                      data-testid="button-dashboard"
+                    >
+                      <LayoutDashboard className="h-4 w-4" />
+                      <span className="hidden md:inline">Dashboard</span>
+                    </Button>
+                  </Link>
+                )}
                 <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground">
                   <Avatar className="h-8 w-8">
                     <AvatarImage src={(user as User).profileImageUrl || undefined} />
@@ -108,6 +127,17 @@ export default function Header({ onMenuClick }: HeaderProps) {
                   <LogOut className="h-4 w-4" />
                 </Button>
               </>
+            ) : (
+              <Button 
+                variant="default" 
+                size="sm"
+                onClick={handleLogin}
+                data-testid="button-login"
+                className="gap-2"
+              >
+                <LogIn className="h-4 w-4" />
+                <span className="hidden sm:inline">Sign In</span>
+              </Button>
             )}
           </div>
         </div>

@@ -1,16 +1,20 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format, startOfYear, differenceInWeeks } from "date-fns";
-import { ExternalLink, Lock, BarChart3, ShoppingCart, LogIn } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
+import { ExternalLink } from "lucide-react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import type { User } from "@shared/schema";
 import Header from "@/components/Header";
 import HeroSection from "@/components/HeroSection";
 import CurrentWeekDisplay from "@/components/CurrentWeekDisplay";
 import LawnSizeCalculator from "@/components/LawnSizeCalculator";
 import ProductCard from "@/components/ProductCard";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import InventoryManager from "@/components/InventoryManager";
+import PurchaseRecommendations from "@/components/PurchaseRecommendations";
+import { Skeleton } from "@/components/ui/skeleton";
 
-// Application guide data (same as Dashboard)
+// Mock data based on NZLA application guide
 interface ApplicationWeek {
   month: string;
   week: number;
@@ -107,9 +111,10 @@ const applicationGuide: ApplicationWeek[] = [
   }
 ];
 
-export default function Home() {
-  const { isAuthenticated } = useAuth();
+export default function Dashboard() {
   const [lawnSize, setLawnSize] = useState(100);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const { toast } = useToast();
   const currentDate = new Date();
   const yearStart = startOfYear(currentDate);
   const weekNumber = differenceInWeeks(currentDate, yearStart) + 1;
@@ -118,8 +123,47 @@ export default function Home() {
   const currentApplicationIndex = (weekNumber - 1) % applicationGuide.length;
   const currentApplication = applicationGuide[currentApplicationIndex];
 
-  const handleLogin = () => {
-    window.location.href = "/api/login";
+  // Fetch user data to get saved lawn size
+  // Auth is checked by ProtectedRoute wrapper, so this is safe
+  const { data: user, isLoading: isUserLoading } = useQuery<User>({
+    queryKey: ['/api/auth/user'],
+  });
+
+  // Update lawn size mutation
+  const updateLawnSizeMutation = useMutation({
+    mutationFn: async (newSize: number) => {
+      setSaveSuccess(false);
+      return await apiRequest('PUT', '/api/user/lawn-size', { lawnSize: newSize });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+      setSaveSuccess(true);
+      toast({
+        title: "Lawn size saved",
+        description: "Your lawn size has been updated successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      setSaveSuccess(false);
+      toast({
+        title: "Error saving lawn size",
+        description: error.message || "Failed to save lawn size. Please try again.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Update local state when user data is loaded
+  useEffect(() => {
+    if (user?.lawnSize) {
+      setLawnSize(user.lawnSize);
+    }
+  }, [user?.lawnSize]);
+
+  // Handle lawn size changes
+  const handleLawnSizeChange = (newSize: number) => {
+    setLawnSize(newSize);
+    updateLawnSizeMutation.mutate(newSize);
   };
 
   return (
@@ -162,11 +206,12 @@ export default function Home() {
             <CurrentWeekDisplay />
             <LawnSizeCalculator 
               currentSize={lawnSize} 
-              onSizeChange={setLawnSize}
-              isSaving={false}
-              isLoading={false}
-              saveSuccess={false}
+              onSizeChange={handleLawnSizeChange}
+              isSaving={updateLawnSizeMutation.isPending}
+              isLoading={isUserLoading}
+              saveSuccess={saveSuccess}
             />
+            <InventoryManager />
           </div>
           
           {/* Center Column - Main Product Recommendation */}
@@ -180,79 +225,8 @@ export default function Home() {
               />
             )}
             
-            {/* Locked Feature Preview Cards */}
-            {!isAuthenticated && (
-              <div className="space-y-4 md:space-y-6">
-                {/* Inventory Manager - Locked */}
-                <Card className="relative overflow-hidden border-2 border-dashed opacity-60">
-                  <div className="absolute inset-0 bg-background/90 backdrop-blur-[2px] z-10 flex items-center justify-center">
-                    <div className="text-center space-y-3 p-6">
-                      <Lock className="h-12 w-12 mx-auto text-muted-foreground" />
-                      <div>
-                        <h3 className="font-semibold text-lg mb-1">Sign in to unlock Inventory Tracking</h3>
-                        <p className="text-sm text-muted-foreground mb-4">
-                          Track your product stocks, monitor inventory levels, and never run out of essential lawn care products.
-                        </p>
-                        <Button onClick={handleLogin} data-testid="button-login-inventory" className="opacity-100">
-                          <LogIn className="h-4 w-4 mr-2" />
-                          Sign In to Unlock
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                  <CardHeader className="blur-sm">
-                    <CardTitle className="flex items-center gap-2">
-                      <BarChart3 className="h-5 w-5 text-primary" />
-                      Product Inventory
-                    </CardTitle>
-                    <CardDescription>
-                      Track your current stock levels
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="blur-sm">
-                    <div className="space-y-3">
-                      <div className="h-20 bg-muted rounded-md"></div>
-                      <div className="h-20 bg-muted rounded-md"></div>
-                      <div className="h-20 bg-muted rounded-md"></div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Purchase Recommendations - Locked */}
-                <Card className="relative overflow-hidden border-2 border-dashed opacity-60">
-                  <div className="absolute inset-0 bg-background/90 backdrop-blur-[2px] z-10 flex items-center justify-center">
-                    <div className="text-center space-y-3 p-6">
-                      <Lock className="h-12 w-12 mx-auto text-muted-foreground" />
-                      <div>
-                        <h3 className="font-semibold text-lg mb-1">Sign in to unlock Purchase Recommendations</h3>
-                        <p className="text-sm text-muted-foreground mb-4">
-                          Get 8-week forecasts, automatic purchase alerts, and suggested quantities based on your inventory.
-                        </p>
-                        <Button onClick={handleLogin} data-testid="button-login-purchase" className="opacity-100">
-                          <LogIn className="h-4 w-4 mr-2" />
-                          Sign In to Unlock
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                  <CardHeader className="blur-sm">
-                    <CardTitle className="flex items-center gap-2">
-                      <ShoppingCart className="h-5 w-5 text-primary" />
-                      Purchase Recommendations
-                    </CardTitle>
-                    <CardDescription>
-                      Smart purchase planning and alerts
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="blur-sm">
-                    <div className="space-y-3">
-                      <div className="h-16 bg-muted rounded-md"></div>
-                      <div className="h-16 bg-muted rounded-md"></div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
+            {/* Purchase Recommendations */}
+            <PurchaseRecommendations lawnSize={lawnSize} />
           </div>
         </div>
       </main>
