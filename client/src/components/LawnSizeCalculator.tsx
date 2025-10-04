@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +12,11 @@ interface LawnSizeCalculatorProps {
 
 export default function LawnSizeCalculator({ onSizeChange, currentSize }: LawnSizeCalculatorProps) {
   const [inputValue, setInputValue] = useState(currentSize.toString());
+
+  // Sync input value with currentSize prop when it changes
+  useEffect(() => {
+    setInputValue(currentSize.toString());
+  }, [currentSize]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

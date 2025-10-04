@@ -126,11 +126,7 @@ export default function Home() {
   // Update lawn size mutation
   const updateLawnSizeMutation = useMutation({
     mutationFn: async (newSize: number) => {
-      return await apiRequest('/api/user/lawn-size', {
-        method: 'PUT',
-        body: JSON.stringify({ lawnSize: newSize }),
-        headers: { 'Content-Type': 'application/json' }
-      });
+      return await apiRequest('PUT', '/api/user/lawn-size', { lawnSize: newSize });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
