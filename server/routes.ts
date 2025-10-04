@@ -21,6 +21,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update user lawn size
+  app.put('/api/user/lawn-size', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const lawnSizeSchema = z.object({
+        lawnSize: z.number().positive().int()
+      });
+      const { lawnSize } = lawnSizeSchema.parse(req.body);
+      const updatedUser = await storage.updateUserLawnSize(userId, lawnSize);
+      if (!updatedUser) {
+        res.status(404).json({ error: "User not found" });
+        return;
+      }
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error updating lawn size:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Invalid data", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to update lawn size" });
+      }
+    }
+  });
+
   // Protected inventory management routes
   
   // Get all inventory items for authenticated user
