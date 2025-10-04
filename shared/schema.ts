@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, decimal, timestamp, jsonb, index } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, decimal, timestamp, jsonb, index, unique } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -46,7 +46,9 @@ export const inventory = pgTable("inventory", {
   lastUpdated: timestamp("last_updated").defaultNow().notNull(),
   purchaseDate: timestamp("purchase_date"),
   notes: text("notes")
-});
+}, (table) => [
+  unique().on(table.userId, table.productName)
+]);
 
 export const insertInventorySchema = createInsertSchema(inventory).omit({
   id: true,

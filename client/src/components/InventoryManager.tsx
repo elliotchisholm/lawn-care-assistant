@@ -33,6 +33,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
+import { NZLA_PRODUCTS } from "@shared/products";
 
 
 // Form validation schemas
@@ -44,22 +45,6 @@ const inventoryFormSchema = z.object({
 });
 
 type InventoryFormData = z.infer<typeof inventoryFormSchema>;
-
-// Common NZLA product options (matches WeeklySchedule product names)
-const commonProducts = [
-  "Wetter 3W",
-  "Nurture", 
-  "Root Health",
-  "Humic+",
-  "Iron+",
-  "Amino",
-  "Restore",
-  "Liquid N",
-  "Liquid Boost", 
-  "Grub+",
-  "All Seasons",
-  "Charger"
-];
 
 const commonUnits = [
   { value: "ml", label: "ml" },
@@ -255,9 +240,9 @@ function InventoryForm({ item, open, onOpenChange }: InventoryFormProps) {
                         <SelectValue placeholder="Select a product" />
                       </SelectTrigger>
                       <SelectContent>
-                        {commonProducts.map((product) => (
-                          <SelectItem key={product} value={product}>
-                            {product}
+                        {NZLA_PRODUCTS.map((product) => (
+                          <SelectItem key={product.name} value={product.name}>
+                            {product.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
