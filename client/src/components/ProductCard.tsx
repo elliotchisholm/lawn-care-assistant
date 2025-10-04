@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Droplets, Beaker, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { convertQuantity } from "@shared/unitConversions";
 
 
 interface InventoryItem {
@@ -47,11 +48,11 @@ export default function ProductCard({
 
   // Helper function to get inventory status for a product
   const getInventoryStatus = (productName: string, requiredQuantity: number, unit: string) => {
-    const inventoryItem = inventory.find(item => 
-      item.productName === productName && item.unit === unit
+    const inventoryItems = inventory.filter(item => 
+      item.productName === productName
     );
     
-    if (!inventoryItem) {
+    if (inventoryItems.length === 0) {
       return {
         status: 'out_of_stock' as const,
         currentQuantity: 0,
@@ -60,12 +61,17 @@ export default function ProductCard({
       };
     }
 
-    const currentQty = parseFloat(inventoryItem.currentQuantity);
-    const sufficient = currentQty >= requiredQuantity;
+    const totalConverted = inventoryItems.reduce((sum, item) => {
+      const qty = parseFloat(item.currentQuantity);
+      const converted = convertQuantity(qty, item.unit, unit);
+      return sum + converted;
+    }, 0);
+    
+    const sufficient = totalConverted >= requiredQuantity;
     
     return {
       status: sufficient ? 'sufficient' as const : 'insufficient' as const,
-      currentQuantity: currentQty,
+      currentQuantity: totalConverted,
       sufficient,
       message: sufficient ? 'In stock' : 'Low stock'
     };

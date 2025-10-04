@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { convertQuantity } from "@shared/unitConversions";
 
 
 interface InventoryItem {
@@ -171,11 +172,16 @@ export default function PurchaseRecommendations({ lawnSize }: PurchaseRecommenda
     
     productTotals.forEach(({ total, unit, applications }, key) => {
       const productName = key.split('_')[0];
-      const inventoryItem = inventory.find(item => 
-        item.productName === productName && item.unit === unit
+      const inventoryItems = inventory.filter(item => 
+        item.productName === productName
       );
       
-      const currentStock = inventoryItem ? parseFloat(inventoryItem.currentQuantity) : 0;
+      const currentStock = inventoryItems.reduce((sum, item) => {
+        const qty = parseFloat(item.currentQuantity);
+        const converted = convertQuantity(qty, item.unit, unit);
+        return sum + converted;
+      }, 0);
+      
       const shortfall = total - currentStock;
       
       if (shortfall > 0) {
