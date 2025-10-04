@@ -10,6 +10,7 @@ export interface IStorage {
   // User operations required for Replit Auth
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
+  updateUserLawnSize(userId: string, lawnSize: number): Promise<User | undefined>;
   
   // Inventory management methods
   getUserInventory(userId: string): Promise<Inventory[]>;
@@ -39,6 +40,14 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return user;
+  }
+
+  async updateUserLawnSize(userId: string, lawnSize: number): Promise<User | undefined> {
+    const result = await db.update(users)
+      .set({ lawnSize, updatedAt: new Date() })
+      .where(eq(users.id, userId))
+      .returning();
+    return result[0];
   }
 
   // Inventory methods - use database for persistent storage
