@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { format, startOfYear, differenceInWeeks } from "date-fns";
+import { ExternalLink } from "lucide-react";
 import Header from "@/components/Header";
 import HeroSection from "@/components/HeroSection";
 import CurrentWeekDisplay from "@/components/CurrentWeekDisplay";
 import LawnSizeCalculator from "@/components/LawnSizeCalculator";
 import ProductCard from "@/components/ProductCard";
-import WeeklySchedule from "@/components/WeeklySchedule";
 import InventoryManager from "@/components/InventoryManager";
 import PurchaseRecommendations from "@/components/PurchaseRecommendations";
 
@@ -124,6 +124,31 @@ export default function Home() {
         {/* Hero Section */}
         <HeroSection />
         
+        {/* Attribution Banner */}
+        <div className="bg-muted/50 border rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <ExternalLink className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+            <div className="text-sm">
+              <p className="text-foreground">
+                <strong>Content Source:</strong> All application calculations, product recommendations, and guidance are based on the{" "}
+                <a 
+                  href="https://www.newzealandlawnaddicts.com/application-guide" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-primary underline hover:no-underline font-medium"
+                  data-testid="link-nzla-guide"
+                >
+                  New Zealand Lawn Addicts Application Guide
+                </a>
+                .
+              </p>
+              <p className="text-muted-foreground mt-1">
+                The application guide and its content are the intellectual property of New Zealand Lawn Addicts. This tool provides calculations and tracking based on their guidance.
+              </p>
+            </div>
+          </div>
+        </div>
+        
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column */}
@@ -147,34 +172,8 @@ export default function Home() {
               />
             )}
             
-            {/* Weekly Schedule */}
-            <WeeklySchedule currentWeek={weekNumber} />
-            
             {/* Purchase Recommendations */}
             <PurchaseRecommendations lawnSize={lawnSize} />
-          </div>
-        </div>
-        
-        {/* Footer Information */}
-        <div className="bg-muted/30 rounded-lg p-6 mt-8">
-          <h3 className="font-semibold mb-3">Important Application Guidelines</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-muted-foreground">
-            <div>
-              <p className="mb-2"><strong>Timing:</strong></p>
-              <ul className="space-y-1">
-                <li>• Apply minimum 6 hours after mowing</li>
-                <li>• Temperature should not exceed 25°C</li>
-                <li>• Apply to dry foliage</li>
-              </ul>
-            </div>
-            <div>
-              <p className="mb-2"><strong>Post-Application:</strong></p>
-              <ul className="space-y-1">
-                <li>• Avoid mowing for 24 hours</li>
-                <li>• Follow irrigation guidelines per product</li>
-                <li>• All rates based on 100m² coverage</li>
-              </ul>
-            </div>
           </div>
         </div>
       </main>

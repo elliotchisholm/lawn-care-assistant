@@ -11,9 +11,42 @@ export default function Landing() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100">
+      {/* Header with links */}
+      <header className="sticky top-0 z-50 w-full border-b bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+        <div className="container mx-auto px-4">
+          <div className="flex h-16 items-center justify-end gap-2">
+            <Link href="/schedule">
+              <Button 
+                variant="ghost" 
+                size="sm"
+                data-testid="link-schedule"
+                className="gap-2"
+              >
+                Year-Round Schedule
+              </Button>
+            </Link>
+            <a
+              href="https://www.newzealandlawnaddicts.com/application-guide"
+              target="_blank"
+              rel="noopener noreferrer"
+              data-testid="link-nzla-external"
+            >
+              <Button 
+                variant="ghost" 
+                size="sm"
+                className="gap-2"
+              >
+                NZLA Guide
+                <ExternalLink className="h-4 w-4" />
+              </Button>
+            </a>
+          </div>
+        </div>
+      </header>
+      
       <div className="container mx-auto px-4 py-16">
-        {/* Header */}
-        <div className="text-center mb-16">
+        {/* Hero */}
+        <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-3 mb-6">
             <Leaf className="h-12 w-12 text-green-600" />
             <h1 className="text-4xl font-bold text-green-800">NZLA Lawn Care Manager</h1>
@@ -31,6 +64,31 @@ export default function Landing() {
             <LogIn className="w-5 h-5 mr-2" />
             Log In with Google
           </Button>
+        </div>
+
+        {/* Attribution Banner */}
+        <div className="bg-white/80 backdrop-blur border border-green-200 rounded-lg p-4 mb-12 max-w-3xl mx-auto">
+          <div className="flex items-start gap-3">
+            <ExternalLink className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
+            <div className="text-sm">
+              <p className="text-green-900">
+                <strong>Content Source:</strong> All application calculations, product recommendations, and guidance are based on the{" "}
+                <a 
+                  href="https://www.newzealandlawnaddicts.com/application-guide" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-green-600 underline hover:no-underline font-medium"
+                  data-testid="link-nzla-guide"
+                >
+                  New Zealand Lawn Addicts Application Guide
+                </a>
+                .
+              </p>
+              <p className="text-green-700 mt-1">
+                The application guide and its content are the intellectual property of New Zealand Lawn Addicts. This tool provides calculations and tracking based on their guidance.
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Features Grid */}
