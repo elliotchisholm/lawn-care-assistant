@@ -249,15 +249,15 @@ export default function PurchaseRecommendations({ lawnSize }: PurchaseRecommenda
           {purchaseRecommendations.map((rec, index) => (
             <div 
               key={`${rec.productName}_${rec.unit}`}
-              className="flex items-center justify-between p-3 border rounded-lg bg-red-50 border-red-200"
+              className="flex items-center justify-between p-3 border border-destructive/20 rounded-lg bg-destructive/5 dark:bg-destructive/10"
               data-testid={`purchase-recommendation-${index}`}
             >
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  <h4 className="font-medium" data-testid="text-product-name">
+                  <h4 className="font-medium text-foreground" data-testid="text-product-name">
                     {rec.productName}
                   </h4>
-                  <AlertTriangle className="h-4 w-4 text-red-600" />
+                  <AlertTriangle className="h-4 w-4 text-destructive" />
                 </div>
                 <div className="flex items-center gap-3 mt-1">
                   <p className="text-sm text-muted-foreground">
@@ -279,7 +279,7 @@ export default function PurchaseRecommendations({ lawnSize }: PurchaseRecommenda
                 </div>
               </div>
               <div className="text-right ml-4">
-                <p className="font-semibold text-lg text-red-700" data-testid="text-suggested-purchase">
+                <p className="font-semibold text-lg text-destructive" data-testid="text-suggested-purchase">
                   Buy: {rec.suggestedPurchase}{rec.unit}
                 </p>
                 <p className="text-xs text-muted-foreground">
