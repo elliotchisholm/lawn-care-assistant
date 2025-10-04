@@ -34,9 +34,12 @@ export class DatabaseStorage implements IStorage {
       .insert(users)
       .values(userData)
       .onConflictDoUpdate({
-        target: users.id,
+        target: users.email,
         set: {
-          ...userData,
+          id: userData.id,
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          profileImageUrl: userData.profileImageUrl,
           updatedAt: new Date(),
         },
       })
@@ -67,7 +70,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createInventoryItem(item: InsertInventory): Promise<Inventory> {
-    const result = await db.insert(inventory).values(item).returning();
+    // Upsert: update if product exists for this user, create if not
+    const result = await db.insert(inventory)
+      .values(item)
+      .onConflictDoUpdate({
+        target: [inventory.userId, inventory.productName],
+        set: {
+          currentQuantity: item.currentQuantity,
+          unit: item.unit,
+          notes: item.notes,
+          purchaseDate: item.purchaseDate,
+          lastUpdated: new Date(),
+        },
+      })
+      .returning();
     return result[0];
   }
 
