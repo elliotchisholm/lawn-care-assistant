@@ -2,7 +2,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { LogIn, Leaf, Calendar, ShoppingCart, BarChart3, ExternalLink } from "lucide-react";
-import { Link } from "wouter";
 
 export default function Landing() {
   const handleLogin = () => {
@@ -15,16 +14,6 @@ export default function Landing() {
       <header className="sticky top-0 z-50 w-full border-b bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60">
         <div className="container mx-auto px-4">
           <div className="flex h-16 items-center justify-end gap-2">
-            <Link href="/schedule">
-              <Button 
-                variant="ghost" 
-                size="sm"
-                data-testid="link-schedule"
-                className="gap-2"
-              >
-                Year-Round Schedule
-              </Button>
-            </Link>
             <a
               href="https://www.newzealandlawnaddicts.com/application-guide"
               target="_blank"
@@ -104,18 +93,12 @@ export default function Landing() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <ul className="space-y-2 text-sm text-muted-foreground mb-4">
+              <ul className="space-y-2 text-sm text-muted-foreground">
                 <li>• NZLA-certified product recommendations</li>
                 <li>• Scaled quantities for your lawn size</li>
                 <li>• Tank mixing instructions</li>
                 <li>• Application timing guidance</li>
               </ul>
-              <Link href="/schedule">
-                <Button variant="outline" size="sm" className="w-full" data-testid="button-view-schedule">
-                  <ExternalLink className="w-4 h-4 mr-2" />
-                  View Weekly Schedule
-                </Button>
-              </Link>
             </CardContent>
           </Card>
 

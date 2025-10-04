@@ -4,7 +4,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ThemeToggle } from "./theme-toggle";
 import { useAuth } from "@/hooks/useAuth";
 import type { User } from "@shared/schema";
-import { Link } from "wouter";
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -59,16 +58,6 @@ export default function Header({ onMenuClick }: HeaderProps) {
           </div>
           
           <div className="flex items-center gap-1 md:gap-2 shrink-0">
-            <Link href="/schedule" className="hidden md:inline-block">
-              <Button 
-                variant="ghost" 
-                size="sm"
-                data-testid="link-schedule"
-                className="gap-2"
-              >
-                Year-Round Schedule
-              </Button>
-            </Link>
             <a
               href="https://www.newzealandlawnaddicts.com/application-guide"
               target="_blank"

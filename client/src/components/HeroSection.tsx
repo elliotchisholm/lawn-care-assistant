@@ -1,5 +1,4 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Leaf, Calendar, Calculator } from "lucide-react";
 import lawnBackgroundUrl from "@assets/generated_images/Clean_lawn_care_background_523c1df5.png";
 
@@ -54,18 +53,6 @@ export default function HeroSection({ className = "" }: HeroSectionProps) {
               <p className="text-sm text-white/80">NZLA certified application guide</p>
             </CardContent>
           </Card>
-        </div>
-        
-        <div className="mt-6 flex flex-wrap gap-2">
-          <Badge variant="outline" className="bg-white/20 text-white border-white/30">
-            Tank Mixing Guide
-          </Badge>
-          <Badge variant="outline" className="bg-white/20 text-white border-white/30">
-            Application Timing
-          </Badge>
-          <Badge variant="outline" className="bg-white/20 text-white border-white/30">
-            Year-Round Schedule
-          </Badge>
         </div>
       </div>
     </div>
