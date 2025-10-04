@@ -14,11 +14,12 @@ Preferred communication style: Simple, everyday language.
 
 ### Frontend Architecture
 - **Framework**: React 18 with TypeScript, using Vite as the build tool
-- **Routing**: Wouter for lightweight client-side routing
+- **Routing**: Wouter for lightweight client-side routing with ProtectedRoute wrapper for authenticated pages
 - **State Management**: TanStack Query (React Query) for server state management
 - **UI Components**: shadcn/ui component library built on Radix UI primitives
 - **Styling**: Tailwind CSS with custom design tokens and utility-first approach
 - **Form Handling**: React Hook Form with Zod validation
+- **Authentication**: Custom useAuth hook for managing authentication state across components
 
 ### Backend Architecture
 - **Framework**: Express.js with TypeScript
@@ -35,9 +36,12 @@ Preferred communication style: Simple, everyday language.
   - Shared schema with Zod validation integration
 
 ### Authentication and Authorization
-- **User Management**: Username/password authentication system
+- **Authentication Method**: Google SSO via Replit Auth (OIDC)
+- **Tiered Access Model**: Public features accessible without login; protected features require authentication
 - **Session Storage**: Server-side sessions stored in PostgreSQL
+- **Route Protection**: ProtectedRoute component guards authenticated pages, preventing unauthorized access
 - **Data Isolation**: User-scoped inventory and recommendation data
+- **Security**: Client-side route guards prevent protected queries from executing for unauthenticated users
 
 ### Design System and Theming
 - **Color Palette**: Nature-focused green theme with light/dark mode support
@@ -45,11 +49,27 @@ Preferred communication style: Simple, everyday language.
 - **Component Variants**: Comprehensive button, card, and form component variations
 - **Responsive Design**: Mobile-first approach with touch-friendly interfaces
 
+### Application Structure
+- **Public Home Page (/)**: Accessible without authentication
+  - Lawn Size Calculator (local state, no save)
+  - Current Week Display showing this week's application
+  - Product Application recommendations with quantity calculations
+  - Locked feature previews (Inventory & Purchase Recommendations) with sign-in CTAs
+- **Protected Dashboard (/dashboard)**: Requires authentication
+  - Full Lawn Size Calculator with persistent storage
+  - Current Week Display
+  - Product Application recommendations
+  - Product Inventory Management with unit conversions (kg↔g, L↔ml)
+  - Purchase Recommendations based on inventory and application needs
+  
 ### Core Application Features
 - **Weekly Application Scheduler**: Automatically determines current week and appropriate product applications
-- **Lawn Size Calculator**: Precise quantity scaling based on user's lawn area with real-time save indicators
+- **Lawn Size Calculator**: Precise quantity scaling based on user's lawn area
+  - Public version: Local state (not saved)
+  - Dashboard version: Persistent storage with real-time save indicators
 - **Product Recommendation Engine**: Date-based NZLA product suggestions with detailed application instructions
-- **Inventory Management**: User tracking of product stocks and quantities
+- **Inventory Management** (Protected): User tracking of product stocks and quantities with unit conversion support
+- **Purchase Recommendations** (Protected): Intelligent suggestions based on upcoming applications and current inventory
 - **Application Timeline**: Visual weekly schedule with progress indicators
 
 ### User Experience Enhancements
