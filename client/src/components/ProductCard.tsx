@@ -148,9 +148,15 @@ export default function ProductCard({
                       {statusDisplay.badge}
                     </Badge>
                   </div>
-                  <p className="text-xs opacity-70 mt-1">
-                    Current stock: {inventoryStatus.currentQuantity}{product.unit}
-                  </p>
+                  <div className="flex items-center gap-2 mt-2">
+                    <p className="text-sm font-medium" data-testid={`text-current-stock-${index}`}>
+                      Stock: {inventoryStatus.currentQuantity}{product.unit}
+                    </p>
+                    <span className="text-sm text-muted-foreground">/</span>
+                    <p className="text-sm text-muted-foreground">
+                      Need: {scaledQuantity.toFixed(0)}{product.unit}
+                    </p>
+                  </div>
                 </div>
                 <div className="text-right ml-4">
                   <p className="font-semibold text-lg" data-testid={`text-quantity-${index}`}>
@@ -158,9 +164,6 @@ export default function ProductCard({
                   </p>
                   <p className="text-xs opacity-70">
                     ({product.quantity}{product.unit}/100m²)
-                  </p>
-                  <p className={`text-xs font-medium ${inventoryStatus.sufficient ? statusDisplay.color : statusDisplay.color}`}>
-                    {inventoryStatus.message}
                   </p>
                 </div>
               </div>
