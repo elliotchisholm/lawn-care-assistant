@@ -79,7 +79,7 @@ export default function LawnSizeCalculator({ onSizeChange, currentSize, isSaving
           <div className="flex gap-2">
             <Button 
               type="submit" 
-              className="flex-1 transition-all" 
+              className="flex-1 min-h-12 transition-all" 
               disabled={isLoading || isSaving}
               data-testid="button-calculate"
             >

@@ -466,7 +466,7 @@ export default function InventoryManager() {
             <Package className="h-5 w-5" />
             Product Inventory
           </div>
-          <Button onClick={handleAdd} size="sm" data-testid="button-add-inventory">
+          <Button onClick={handleAdd} className="min-h-12" data-testid="button-add-inventory">
             <Plus className="h-4 w-4 mr-2" />
             Add Product
           </Button>

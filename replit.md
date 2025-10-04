@@ -47,10 +47,19 @@ Preferred communication style: Simple, everyday language.
 
 ### Core Application Features
 - **Weekly Application Scheduler**: Automatically determines current week and appropriate product applications
-- **Lawn Size Calculator**: Precise quantity scaling based on user's lawn area
+- **Lawn Size Calculator**: Precise quantity scaling based on user's lawn area with real-time save indicators
 - **Product Recommendation Engine**: Date-based NZLA product suggestions with detailed application instructions
 - **Inventory Management**: User tracking of product stocks and quantities
 - **Application Timeline**: Visual weekly schedule with progress indicators
+
+### User Experience Enhancements
+- **Loading States**: Skeleton screens provide visual feedback during data fetching
+- **Toast Notifications**: Success and error messages for user actions (save confirmations, error alerts)
+- **Visual Feedback**: Loading spinners and success indicators (checkmarks) for save operations
+- **Dark Mode**: Smooth theme toggle with persistent user preference
+- **Mobile Optimization**: Touch-friendly interface with minimum 44px touch targets for all interactive elements
+- **Smooth Animations**: Subtle transitions on buttons, cards, and theme switching for polished user experience
+- **Error Handling**: Comprehensive error messages displayed to users when operations fail
 
 ### External Dependencies
 - **Neon Database**: Serverless PostgreSQL hosting for production data storage
