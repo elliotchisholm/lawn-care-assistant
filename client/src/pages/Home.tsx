@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format, startOfYear, differenceInWeeks } from "date-fns";
 import { ExternalLink } from "lucide-react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import Header from "@/components/Header";
 import HeroSection from "@/components/HeroSection";
 import CurrentWeekDisplay from "@/components/CurrentWeekDisplay";
@@ -116,6 +118,38 @@ export default function Home() {
   const currentApplicationIndex = (weekNumber - 1) % applicationGuide.length;
   const currentApplication = applicationGuide[currentApplicationIndex];
 
+  // Fetch user data to get saved lawn size
+  const { data: user } = useQuery({
+    queryKey: ['/api/auth/user'],
+  });
+
+  // Update lawn size mutation
+  const updateLawnSizeMutation = useMutation({
+    mutationFn: async (newSize: number) => {
+      return await apiRequest('/api/user/lawn-size', {
+        method: 'PUT',
+        body: JSON.stringify({ lawnSize: newSize }),
+        headers: { 'Content-Type': 'application/json' }
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+    }
+  });
+
+  // Update local state when user data is loaded
+  useEffect(() => {
+    if (user?.lawnSize) {
+      setLawnSize(user.lawnSize);
+    }
+  }, [user?.lawnSize]);
+
+  // Handle lawn size changes
+  const handleLawnSizeChange = (newSize: number) => {
+    setLawnSize(newSize);
+    updateLawnSizeMutation.mutate(newSize);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -156,7 +190,7 @@ export default function Home() {
             <CurrentWeekDisplay />
             <LawnSizeCalculator 
               currentSize={lawnSize} 
-              onSizeChange={setLawnSize}
+              onSizeChange={handleLawnSizeChange}
             />
             <InventoryManager />
           </div>
