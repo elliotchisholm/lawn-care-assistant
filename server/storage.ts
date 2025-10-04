@@ -1,4 +1,5 @@
 import { type User, type UpsertUser, type Inventory, type InsertInventory, type UpdateInventory, users, inventory } from "@shared/schema";
+import { NZLA_PRODUCTS } from "@shared/products";
 import { randomUUID } from "crypto";
 import { db } from "./db";
 import { eq, and } from "drizzle-orm";
@@ -18,6 +19,7 @@ export interface IStorage {
   createInventoryItem(item: InsertInventory): Promise<Inventory>;
   updateInventoryItem(id: string, userId: string, item: UpdateInventory): Promise<Inventory | undefined>;
   deleteInventoryItem(id: string, userId: string): Promise<boolean>;
+  initializeUserInventory(userId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -87,6 +89,17 @@ export class DatabaseStorage implements IStorage {
         eq(inventory.userId, userId)
       ));
     return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  async initializeUserInventory(userId: string): Promise<void> {
+    const inventoryItems = NZLA_PRODUCTS.map(product => ({
+      userId,
+      productName: product.name,
+      currentQuantity: "0",
+      unit: product.unit
+    }));
+    
+    await db.insert(inventory).values(inventoryItems).onConflictDoNothing();
   }
 }
 
