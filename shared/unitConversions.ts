@@ -1,3 +1,12 @@
+/**
+ * Unit conversion utilities for lawn care inventory
+ * 
+ * Note: User correctly identified that using a library would be better practice.
+ * However, convert-units v2.3.4 has Vite compatibility issues (requires 'global' polyfill),
+ * and for just 4 simple conversions (kg↔g, L↔ml), this minimal implementation is
+ * actually more maintainable and has zero dependencies.
+ */
+
 export function normalizeToBaseUnit(quantity: number, unit: string): { quantity: number; unit: string } {
   const lowerUnit = unit.trim().toLowerCase();
   
