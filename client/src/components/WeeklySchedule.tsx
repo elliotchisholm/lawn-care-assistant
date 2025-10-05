@@ -11,9 +11,10 @@ interface WeeklyScheduleProps {
 }
 
 export default function WeeklySchedule({ currentWeek = 1, className = "" }: WeeklyScheduleProps) {
-  const { data: schedule, isLoading } = useQuery<WeeklyScheduleType[]>({
+  const { data: schedule, isLoading, error } = useQuery<WeeklyScheduleType[]>({
     queryKey: ["/api/schedule"],
   });
+  
   const getVariantForType = (type: string) => {
     switch (type) {
       case 'liquid': return 'default';
@@ -40,6 +41,38 @@ export default function WeeklySchedule({ currentWeek = 1, className = "" }: Week
     );
   }
 
+  if (error) {
+    return (
+      <Card className={className} data-testid="card-weekly-schedule">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5 text-primary" />
+            Year-Round Application Schedule
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-destructive">Failed to load schedule. Please try again later.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!schedule || schedule.length === 0) {
+    return (
+      <Card className={className} data-testid="card-weekly-schedule">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5 text-primary" />
+            Year-Round Application Schedule
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">No schedule data available.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className={className} data-testid="card-weekly-schedule">
       <CardHeader>
@@ -51,9 +84,13 @@ export default function WeeklySchedule({ currentWeek = 1, className = "" }: Week
       <CardContent>
         <ScrollArea className="h-96">
           <div className="space-y-3">
-            {schedule?.map((entry) => {
+            {schedule.map((entry) => {
               const isCurrentWeek = currentWeek === entry.weekNumber;
-              const products = (entry.products as any[]) || [];
+              const products = Array.isArray(entry.products) ? entry.products.filter(
+                (p: unknown): p is { name: string; quantity: number; unit: string } => 
+                  typeof p === 'object' && p !== null && 
+                  'name' in p && typeof (p as { name: unknown }).name === 'string'
+              ) : [];
               return (
                 <div 
                   key={entry.id} 
@@ -79,7 +116,7 @@ export default function WeeklySchedule({ currentWeek = 1, className = "" }: Week
                   
                   {products.length > 0 ? (
                     <div className="flex flex-wrap gap-1">
-                      {products.map((product: any, productIndex: number) => (
+                      {products.map((product, productIndex: number) => (
                         <Badge key={productIndex} variant="outline" className="text-xs">
                           {product.name}
                         </Badge>
