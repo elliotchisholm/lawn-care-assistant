@@ -32,7 +32,8 @@ Preferred communication style: Simple, everyday language.
 - **Schema Management**: Drizzle Kit for migrations and schema evolution
 - **Database Tables**:
   - Users table for authentication and user management
-  - Inventory table for tracking product stocks and quantities
+  - Inventory table for tracking product stocks and quantities with unique constraint per user per product
+  - Weekly Schedule table containing all 52 weeks of NZLA application guide data with per-product types
   - Shared schema with Zod validation integration
 
 ### Authentication and Authorization
@@ -63,14 +64,23 @@ Preferred communication style: Simple, everyday language.
   - Purchase Recommendations based on inventory and application needs
   
 ### Core Application Features
-- **Weekly Application Scheduler**: Automatically determines current week and appropriate product applications
+- **Weekly Application Scheduler**: Database-driven scheduler containing all 52 weeks from NZLA application guide
+  - Automatically determines current week (1-52) based on ISO week number
+  - Fetches weekly product applications from PostgreSQL database
+  - Supports per-product types (liquid/granular/insecticide) for accurate mixed-type weeks
+  - Comprehensive error handling with loading states and defensive type guards
 - **Lawn Size Calculator**: Precise quantity scaling based on user's lawn area
   - Public version: Local state (not saved)
   - Dashboard version: Persistent storage with real-time save indicators
-- **Product Recommendation Engine**: Date-based NZLA product suggestions with detailed application instructions
+- **Product Recommendation Engine**: Database-backed NZLA product suggestions with detailed application instructions
+  - All 52 weeks pre-seeded from official NZLA application guide
+  - Each product includes type field for accurate display and calculations
+  - Upsert-based seeding allows schedule updates without data loss
 - **Inventory Management** (Protected): User tracking of product stocks and quantities with unit conversion support
+  - One inventory entry per product per user (database constraint)
+  - Unit conversions between kg↔g and L↔ml
 - **Purchase Recommendations** (Protected): Intelligent suggestions based on upcoming applications and current inventory
-- **Application Timeline**: Visual weekly schedule with progress indicators
+- **Application Timeline**: Visual weekly schedule with progress indicators and current week highlighting
 
 ### User Experience Enhancements
 - **Loading States**: Skeleton screens provide visual feedback during data fetching
