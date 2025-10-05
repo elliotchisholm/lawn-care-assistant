@@ -132,6 +132,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Weekly schedule routes (public - no auth required)
+  
+  // Get all weekly schedule data
+  app.get("/api/schedule", async (_req, res) => {
+    try {
+      const schedule = await storage.getAllWeeklySchedule();
+      res.json(schedule);
+    } catch (error) {
+      console.error("Error fetching weekly schedule:", error);
+      res.status(500).json({ error: "Failed to fetch weekly schedule" });
+    }
+  });
+
+  // Get specific week schedule
+  app.get("/api/schedule/:weekNumber", async (req, res) => {
+    try {
+      const weekNumber = parseInt(req.params.weekNumber);
+      if (isNaN(weekNumber) || weekNumber < 1 || weekNumber > 52) {
+        res.status(400).json({ error: "Invalid week number" });
+        return;
+      }
+      const week = await storage.getWeeklyScheduleByWeek(weekNumber);
+      if (!week) {
+        res.status(404).json({ error: "Week not found" });
+        return;
+      }
+      res.json(week);
+    } catch (error) {
+      console.error("Error fetching week schedule:", error);
+      res.status(500).json({ error: "Failed to fetch week schedule" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;

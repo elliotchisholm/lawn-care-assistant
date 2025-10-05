@@ -1,4 +1,4 @@
-import { type User, type UpsertUser, type Inventory, type InsertInventory, type UpdateInventory, users, inventory } from "@shared/schema";
+import { type User, type UpsertUser, type Inventory, type InsertInventory, type UpdateInventory, type WeeklySchedule, users, inventory, weeklySchedule } from "@shared/schema";
 import { NZLA_PRODUCTS } from "@shared/products";
 import { randomUUID } from "crypto";
 import { db } from "./db";
@@ -20,6 +20,10 @@ export interface IStorage {
   updateInventoryItem(id: string, userId: string, item: UpdateInventory): Promise<Inventory | undefined>;
   deleteInventoryItem(id: string, userId: string): Promise<boolean>;
   initializeUserInventory(userId: string): Promise<void>;
+  
+  // Weekly schedule methods
+  getAllWeeklySchedule(): Promise<WeeklySchedule[]>;
+  getWeeklyScheduleByWeek(weekNumber: number): Promise<WeeklySchedule | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -116,6 +120,16 @@ export class DatabaseStorage implements IStorage {
     }));
     
     await db.insert(inventory).values(inventoryItems).onConflictDoNothing();
+  }
+
+  // Weekly schedule methods
+  async getAllWeeklySchedule(): Promise<WeeklySchedule[]> {
+    return await db.select().from(weeklySchedule);
+  }
+
+  async getWeeklyScheduleByWeek(weekNumber: number): Promise<WeeklySchedule | undefined> {
+    const [week] = await db.select().from(weeklySchedule).where(eq(weeklySchedule.weekNumber, weekNumber));
+    return week;
   }
 }
 
