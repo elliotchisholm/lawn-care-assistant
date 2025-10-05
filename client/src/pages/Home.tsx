@@ -20,18 +20,27 @@ export default function Home() {
   const weekNumber = differenceInWeeks(currentDate, yearStart) + 1;
   
   // Fetch current week's application from database
-  const { data: currentWeek } = useQuery<WeeklySchedule>({
+  const { data: currentWeek, isLoading: isWeekLoading, error: weekError } = useQuery<WeeklySchedule>({
     queryKey: ["/api/schedule", weekNumber],
   });
 
-  // Transform database format to ProductCard format
-  const currentApplication = currentWeek ? {
-    products: (currentWeek.products as any[]).map((p: any) => ({
-      name: p.name,
-      quantity: p.quantity,
-      unit: p.unit,
-      type: currentWeek.applicationType === 'granular' ? 'granular' as const : 'liquid' as const
-    })),
+  // Validate and transform database format to ProductCard format
+  const currentApplication = currentWeek && Array.isArray(currentWeek.products) ? {
+    products: currentWeek.products
+      .filter((p: unknown): p is { name: string; quantity: number; unit: string; type?: string } => 
+        typeof p === 'object' && p !== null && 
+        'name' in p && 'quantity' in p && 'unit' in p &&
+        typeof (p as { name: unknown }).name === 'string' &&
+        typeof (p as { quantity: unknown }).quantity === 'number' &&
+        typeof (p as { unit: unknown }).unit === 'string'
+      )
+      .map((p) => ({
+        name: p.name,
+        quantity: p.quantity,
+        unit: p.unit,
+        type: (p.type === 'liquid' || p.type === 'granular' ? p.type : 
+              currentWeek.applicationType === 'granular' ? 'granular' : 'liquid') as 'liquid' | 'granular'
+      })),
     waterVolume: parseFloat(currentWeek.waterVolume || "5"),
     applicationNotes: currentWeek.applicationNotes || undefined
   } : null;
@@ -89,7 +98,21 @@ export default function Home() {
           
           {/* Center Column - Main Product Recommendation */}
           <div className="lg:col-span-2 space-y-4 md:space-y-6">
-            {currentApplication && (
+            {isWeekLoading && (
+              <Card data-testid="card-loading-application">
+                <CardContent className="p-6">
+                  <p className="text-muted-foreground">Loading weekly application...</p>
+                </CardContent>
+              </Card>
+            )}
+            {weekError && (
+              <Card data-testid="card-error-application">
+                <CardContent className="p-6">
+                  <p className="text-destructive">Failed to load weekly application schedule. Please try again later.</p>
+                </CardContent>
+              </Card>
+            )}
+            {!isWeekLoading && !weekError && currentApplication && (
               <ProductCard
                 products={currentApplication.products}
                 waterVolume={currentApplication.waterVolume}

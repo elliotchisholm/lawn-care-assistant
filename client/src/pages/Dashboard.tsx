@@ -14,103 +14,6 @@ import InventoryManager from "@/components/InventoryManager";
 import PurchaseRecommendations from "@/components/PurchaseRecommendations";
 import { Skeleton } from "@/components/ui/skeleton";
 
-// Mock data based on NZLA application guide
-interface ApplicationWeek {
-  month: string;
-  week: number;
-  products: Array<{
-    name: string;
-    quantity: number;
-    unit: string;
-    type: 'liquid' | 'granular';
-  }>;
-  waterVolume: number;
-  applicationNotes?: string;
-}
-
-const applicationGuide: ApplicationWeek[] = [
-  // January
-  {
-    month: "January", week: 1, waterVolume: 5,
-    products: [
-      { name: "NZLA Wetter", quantity: 250, unit: "ml", type: "liquid" },
-      { name: "Nurture", quantity: 400, unit: "ml", type: "liquid" },
-      { name: "Root Health", quantity: 50, unit: "ml", type: "liquid" },
-      { name: "Humic+", quantity: 50, unit: "ml", type: "liquid" },
-      { name: "NZLA Iron+", quantity: 200, unit: "ml", type: "liquid" }
-    ],
-    applicationNotes: "Apply Wetter first with 15-20mm irrigation. Apply other products the following day."
-  },
-  {
-    month: "January", week: 2, waterVolume: 5,
-    products: [{ name: "NZLA Amino", quantity: 200, unit: "ml", type: "liquid" }],
-    applicationNotes: "Can be applied as foliar or watered in as soil application."
-  },
-  {
-    month: "January", week: 3, waterVolume: 5,
-    products: [
-      { name: "NZLA Restore", quantity: 200, unit: "ml", type: "liquid" },
-      { name: "NZLA Iron+", quantity: 200, unit: "ml", type: "liquid" },
-      { name: "Liquid N", quantity: 350, unit: "ml", type: "liquid" }
-    ],
-    applicationNotes: "Liquid N needs irrigation within 24 hours. Allow 6-8 hours for foliar absorption first."
-  },
-  // February
-  {
-    month: "February", week: 1, waterVolume: 5,
-    products: [
-      { name: "NZLA Wetter", quantity: 250, unit: "ml", type: "liquid" },
-      { name: "Nurture", quantity: 400, unit: "ml", type: "liquid" },
-      { name: "Root Health", quantity: 50, unit: "ml", type: "liquid" },
-      { name: "Humic+", quantity: 50, unit: "ml", type: "liquid" },
-      { name: "NZLA Iron+", quantity: 200, unit: "ml", type: "liquid" }
-    ],
-    applicationNotes: "Apply Wetter first with 15-20mm irrigation. Apply other products the following day."
-  },
-  {
-    month: "February", week: 2, waterVolume: 5,
-    products: [{ name: "NZLA Amino", quantity: 200, unit: "ml", type: "liquid" }],
-    applicationNotes: "Can be applied as foliar or watered in as soil application."
-  },
-  {
-    month: "February", week: 3, waterVolume: 5,
-    products: [
-      { name: "NZLA Restore", quantity: 200, unit: "ml", type: "liquid" },
-      { name: "NZLA Iron+", quantity: 200, unit: "ml", type: "liquid" }
-    ]
-  },
-  // March
-  {
-    month: "March", week: 1, waterVolume: 5,
-    products: [
-      { name: "NZLA Wetter", quantity: 250, unit: "ml", type: "liquid" },
-      { name: "Nurture", quantity: 400, unit: "ml", type: "liquid" },
-      { name: "Root Health", quantity: 50, unit: "ml", type: "liquid" },
-      { name: "Humic+", quantity: 50, unit: "ml", type: "liquid" },
-      { name: "Liquid Boost", quantity: 200, unit: "ml", type: "liquid" }
-    ],
-    applicationNotes: "Apply Wetter first with 15-20mm irrigation. Apply other products the following day."
-  },
-  {
-    month: "March", week: 2, waterVolume: 0,
-    products: [{ name: "Grub+", quantity: 15, unit: "ml", type: "liquid" }],
-    applicationNotes: "Follow with 3-6mm irrigation unless treating caterpillars (delay 24 hours)."
-  },
-  {
-    month: "March", week: 3, waterVolume: 5,
-    products: [
-      { name: "NZLA Restore", quantity: 200, unit: "ml", type: "liquid" },
-      { name: "Liquid Boost", quantity: 200, unit: "ml", type: "liquid" },
-      { name: "NZLA Amino", quantity: 200, unit: "ml", type: "liquid" }
-    ]
-  },
-  {
-    month: "March", week: 4, waterVolume: 0,
-    products: [{ name: "NZLA All Seasons", quantity: 2000, unit: "g", type: "granular" }],
-    applicationNotes: "Follow with 5-7mm of irrigation."
-  }
-];
-
 export default function Dashboard() {
   const [lawnSize, setLawnSize] = useState(100);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -120,18 +23,27 @@ export default function Dashboard() {
   const weekNumber = differenceInWeeks(currentDate, yearStart) + 1;
   
   // Fetch current week's application from database
-  const { data: currentWeek } = useQuery<WeeklySchedule>({
+  const { data: currentWeek, isLoading: isWeekLoading, error: weekError } = useQuery<WeeklySchedule>({
     queryKey: ["/api/schedule", weekNumber],
   });
 
-  // Transform database format to ProductCard format
-  const currentApplication = currentWeek ? {
-    products: (currentWeek.products as any[]).map((p: any) => ({
-      name: p.name,
-      quantity: p.quantity,
-      unit: p.unit,
-      type: currentWeek.applicationType === 'granular' ? 'granular' as const : 'liquid' as const
-    })),
+  // Validate and transform database format to ProductCard format
+  const currentApplication = currentWeek && Array.isArray(currentWeek.products) ? {
+    products: currentWeek.products
+      .filter((p: unknown): p is { name: string; quantity: number; unit: string; type?: string } => 
+        typeof p === 'object' && p !== null && 
+        'name' in p && 'quantity' in p && 'unit' in p &&
+        typeof (p as { name: unknown }).name === 'string' &&
+        typeof (p as { quantity: unknown }).quantity === 'number' &&
+        typeof (p as { unit: unknown }).unit === 'string'
+      )
+      .map((p) => ({
+        name: p.name,
+        quantity: p.quantity,
+        unit: p.unit,
+        type: (p.type === 'liquid' || p.type === 'granular' ? p.type : 
+              currentWeek.applicationType === 'granular' ? 'granular' : 'liquid') as 'liquid' | 'granular'
+      })),
     waterVolume: parseFloat(currentWeek.waterVolume || "5"),
     applicationNotes: currentWeek.applicationNotes || undefined
   } : null;
@@ -229,7 +141,16 @@ export default function Dashboard() {
           
           {/* Center Column - Main Product Recommendation */}
           <div className="lg:col-span-2 space-y-4 md:space-y-6">
-            {currentApplication && (
+            {isWeekLoading && (
+              <Skeleton className="h-96 w-full" data-testid="skeleton-loading-application" />
+            )}
+            {weekError && (
+              <div className="bg-destructive/10 border border-destructive text-destructive px-4 py-3 rounded" data-testid="error-application">
+                <p className="font-medium">Failed to load weekly application schedule</p>
+                <p className="text-sm">Please try again later or contact support if the problem persists.</p>
+              </div>
+            )}
+            {!isWeekLoading && !weekError && currentApplication && (
               <ProductCard
                 products={currentApplication.products}
                 waterVolume={currentApplication.waterVolume}
