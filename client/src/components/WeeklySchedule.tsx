@@ -2,41 +2,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Calendar, CheckCircle2 } from "lucide-react";
-
-interface WeekEntry {
-  month: string;
-  week: number;
-  products: string[];
-  type: 'liquid' | 'granular' | 'insecticide' | 'rest';
-  isCurrentWeek?: boolean;
-}
+import { useQuery } from "@tanstack/react-query";
+import { type WeeklySchedule as WeeklyScheduleType } from "@shared/schema";
 
 interface WeeklyScheduleProps {
   currentWeek?: number;
   className?: string;
 }
 
-// Mock data for the full year schedule based on NZLA guide
-const mockSchedule: WeekEntry[] = [
-  { month: "January", week: 1, products: ["Wetter 3W", "Nurture", "Root Health", "Humic+", "Iron+"], type: "liquid" },
-  { month: "January", week: 2, products: ["Amino"], type: "liquid" },
-  { month: "January", week: 3, products: ["Restore", "Iron+", "Liquid N"], type: "liquid" },
-  { month: "January", week: 4, products: [], type: "rest" },
-  { month: "February", week: 1, products: ["Wetter 3W", "Nurture", "Root Health", "Humic+", "Iron+"], type: "liquid" },
-  { month: "February", week: 2, products: ["Amino"], type: "liquid" },
-  { month: "February", week: 3, products: ["Restore", "Iron+"], type: "liquid" },
-  { month: "February", week: 4, products: [], type: "rest" },
-  { month: "March", week: 1, products: ["Wetter 3W", "Nurture", "Root Health", "Humic+", "Liquid Boost"], type: "liquid" },
-  { month: "March", week: 2, products: ["Grub+"], type: "insecticide" },
-  { month: "March", week: 3, products: ["Restore", "Liquid Boost", "Amino"], type: "liquid" },
-  { month: "March", week: 4, products: ["All Seasons"], type: "granular" },
-  { month: "April", week: 1, products: ["Wetter 3W", "Nurture", "Root Health", "Humic+", "Liquid Boost"], type: "liquid" },
-  { month: "April", week: 2, products: [], type: "rest" },
-  { month: "April", week: 3, products: ["Restore", "Liquid Boost", "Charger"], type: "liquid" }
-];
-
 export default function WeeklySchedule({ currentWeek = 1, className = "" }: WeeklyScheduleProps) {
-  const getVariantForType = (type: WeekEntry['type']) => {
+  const { data: schedule, isLoading } = useQuery<WeeklyScheduleType[]>({
+    queryKey: ["/api/schedule"],
+  });
+  const getVariantForType = (type: string) => {
     switch (type) {
       case 'liquid': return 'default';
       case 'granular': return 'secondary';
@@ -45,6 +23,22 @@ export default function WeeklySchedule({ currentWeek = 1, className = "" }: Week
       default: return 'default';
     }
   };
+
+  if (isLoading) {
+    return (
+      <Card className={className} data-testid="card-weekly-schedule">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5 text-primary" />
+            Year-Round Application Schedule
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">Loading schedule...</p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className={className} data-testid="card-weekly-schedule">
@@ -57,19 +51,20 @@ export default function WeeklySchedule({ currentWeek = 1, className = "" }: Week
       <CardContent>
         <ScrollArea className="h-96">
           <div className="space-y-3">
-            {mockSchedule.map((entry, index) => {
-              const isCurrentWeek = currentWeek === index + 1;
+            {schedule?.map((entry) => {
+              const isCurrentWeek = currentWeek === entry.weekNumber;
+              const products = (entry.products as any[]) || [];
               return (
                 <div 
-                  key={index} 
+                  key={entry.id} 
                   className={`p-3 rounded-md border transition-colors ${
                     isCurrentWeek ? 'bg-primary/10 border-primary' : 'bg-muted/30'
                   }`}
-                  data-testid={`schedule-week-${index}`}
+                  data-testid={`schedule-week-${entry.weekNumber - 1}`}
                 >
                   <div className="flex items-start justify-between mb-2">
                     <div>
-                      <p className="font-medium">{entry.month} – Week {entry.week}</p>
+                      <p className="font-medium">{entry.month} – Week {entry.weekOfMonth}</p>
                       {isCurrentWeek && (
                         <Badge variant="default" className="text-xs mt-1">
                           <CheckCircle2 className="h-3 w-3 mr-1" />
@@ -77,16 +72,16 @@ export default function WeeklySchedule({ currentWeek = 1, className = "" }: Week
                         </Badge>
                       )}
                     </div>
-                    <Badge variant={getVariantForType(entry.type)} className="text-xs">
-                      {entry.type}
+                    <Badge variant={getVariantForType(entry.applicationType)} className="text-xs">
+                      {entry.applicationType}
                     </Badge>
                   </div>
                   
-                  {entry.products.length > 0 ? (
+                  {products.length > 0 ? (
                     <div className="flex flex-wrap gap-1">
-                      {entry.products.map((product, productIndex) => (
+                      {products.map((product: any, productIndex: number) => (
                         <Badge key={productIndex} variant="outline" className="text-xs">
-                          {product}
+                          {product.name}
                         </Badge>
                       ))}
                     </div>

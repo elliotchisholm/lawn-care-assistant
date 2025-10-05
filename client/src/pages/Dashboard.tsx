@@ -4,7 +4,7 @@ import { ExternalLink } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { User } from "@shared/schema";
+import type { User, WeeklySchedule } from "@shared/schema";
 import Header from "@/components/Header";
 import HeroSection from "@/components/HeroSection";
 import CurrentWeekDisplay from "@/components/CurrentWeekDisplay";
@@ -119,9 +119,22 @@ export default function Dashboard() {
   const yearStart = startOfYear(currentDate);
   const weekNumber = differenceInWeeks(currentDate, yearStart) + 1;
   
-  // Get current week's application (cycling through available data)
-  const currentApplicationIndex = (weekNumber - 1) % applicationGuide.length;
-  const currentApplication = applicationGuide[currentApplicationIndex];
+  // Fetch current week's application from database
+  const { data: currentWeek } = useQuery<WeeklySchedule>({
+    queryKey: ["/api/schedule", weekNumber],
+  });
+
+  // Transform database format to ProductCard format
+  const currentApplication = currentWeek ? {
+    products: (currentWeek.products as any[]).map((p: any) => ({
+      name: p.name,
+      quantity: p.quantity,
+      unit: p.unit,
+      type: currentWeek.applicationType === 'granular' ? 'granular' as const : 'liquid' as const
+    })),
+    waterVolume: parseFloat(currentWeek.waterVolume || "5"),
+    applicationNotes: currentWeek.applicationNotes || undefined
+  } : null;
 
   // Fetch user data to get saved lawn size
   // Auth is checked by ProtectedRoute wrapper, so this is safe

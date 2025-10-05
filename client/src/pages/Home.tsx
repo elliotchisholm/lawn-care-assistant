@@ -2,6 +2,8 @@ import { useState } from "react";
 import { format, startOfYear, differenceInWeeks } from "date-fns";
 import { ExternalLink, Lock, BarChart3, ShoppingCart, LogIn } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useQuery } from "@tanstack/react-query";
+import { type WeeklySchedule } from "@shared/schema";
 import Header from "@/components/Header";
 import HeroSection from "@/components/HeroSection";
 import CurrentWeekDisplay from "@/components/CurrentWeekDisplay";
@@ -10,103 +12,6 @@ import ProductCard from "@/components/ProductCard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
-// Application guide data (same as Dashboard)
-interface ApplicationWeek {
-  month: string;
-  week: number;
-  products: Array<{
-    name: string;
-    quantity: number;
-    unit: string;
-    type: 'liquid' | 'granular';
-  }>;
-  waterVolume: number;
-  applicationNotes?: string;
-}
-
-const applicationGuide: ApplicationWeek[] = [
-  // January
-  {
-    month: "January", week: 1, waterVolume: 5,
-    products: [
-      { name: "NZLA Wetter", quantity: 250, unit: "ml", type: "liquid" },
-      { name: "Nurture", quantity: 400, unit: "ml", type: "liquid" },
-      { name: "Root Health", quantity: 50, unit: "ml", type: "liquid" },
-      { name: "Humic+", quantity: 50, unit: "ml", type: "liquid" },
-      { name: "NZLA Iron+", quantity: 200, unit: "ml", type: "liquid" }
-    ],
-    applicationNotes: "Apply Wetter first with 15-20mm irrigation. Apply other products the following day."
-  },
-  {
-    month: "January", week: 2, waterVolume: 5,
-    products: [{ name: "NZLA Amino", quantity: 200, unit: "ml", type: "liquid" }],
-    applicationNotes: "Can be applied as foliar or watered in as soil application."
-  },
-  {
-    month: "January", week: 3, waterVolume: 5,
-    products: [
-      { name: "NZLA Restore", quantity: 200, unit: "ml", type: "liquid" },
-      { name: "NZLA Iron+", quantity: 200, unit: "ml", type: "liquid" },
-      { name: "Liquid N", quantity: 350, unit: "ml", type: "liquid" }
-    ],
-    applicationNotes: "Liquid N needs irrigation within 24 hours. Allow 6-8 hours for foliar absorption first."
-  },
-  // February
-  {
-    month: "February", week: 1, waterVolume: 5,
-    products: [
-      { name: "NZLA Wetter", quantity: 250, unit: "ml", type: "liquid" },
-      { name: "Nurture", quantity: 400, unit: "ml", type: "liquid" },
-      { name: "Root Health", quantity: 50, unit: "ml", type: "liquid" },
-      { name: "Humic+", quantity: 50, unit: "ml", type: "liquid" },
-      { name: "NZLA Iron+", quantity: 200, unit: "ml", type: "liquid" }
-    ],
-    applicationNotes: "Apply Wetter first with 15-20mm irrigation. Apply other products the following day."
-  },
-  {
-    month: "February", week: 2, waterVolume: 5,
-    products: [{ name: "NZLA Amino", quantity: 200, unit: "ml", type: "liquid" }],
-    applicationNotes: "Can be applied as foliar or watered in as soil application."
-  },
-  {
-    month: "February", week: 3, waterVolume: 5,
-    products: [
-      { name: "NZLA Restore", quantity: 200, unit: "ml", type: "liquid" },
-      { name: "NZLA Iron+", quantity: 200, unit: "ml", type: "liquid" }
-    ]
-  },
-  // March
-  {
-    month: "March", week: 1, waterVolume: 5,
-    products: [
-      { name: "NZLA Wetter", quantity: 250, unit: "ml", type: "liquid" },
-      { name: "Nurture", quantity: 400, unit: "ml", type: "liquid" },
-      { name: "Root Health", quantity: 50, unit: "ml", type: "liquid" },
-      { name: "Humic+", quantity: 50, unit: "ml", type: "liquid" },
-      { name: "Liquid Boost", quantity: 200, unit: "ml", type: "liquid" }
-    ],
-    applicationNotes: "Apply Wetter first with 15-20mm irrigation. Apply other products the following day."
-  },
-  {
-    month: "March", week: 2, waterVolume: 0,
-    products: [{ name: "Grub+", quantity: 15, unit: "ml", type: "liquid" }],
-    applicationNotes: "Follow with 3-6mm irrigation unless treating caterpillars (delay 24 hours)."
-  },
-  {
-    month: "March", week: 3, waterVolume: 5,
-    products: [
-      { name: "NZLA Restore", quantity: 200, unit: "ml", type: "liquid" },
-      { name: "Liquid Boost", quantity: 200, unit: "ml", type: "liquid" },
-      { name: "NZLA Amino", quantity: 200, unit: "ml", type: "liquid" }
-    ]
-  },
-  {
-    month: "March", week: 4, waterVolume: 0,
-    products: [{ name: "NZLA All Seasons", quantity: 2000, unit: "g", type: "granular" }],
-    applicationNotes: "Follow with 5-7mm of irrigation."
-  }
-];
-
 export default function Home() {
   const { isAuthenticated } = useAuth();
   const [lawnSize, setLawnSize] = useState(100);
@@ -114,9 +19,22 @@ export default function Home() {
   const yearStart = startOfYear(currentDate);
   const weekNumber = differenceInWeeks(currentDate, yearStart) + 1;
   
-  // Get current week's application (cycling through available data)
-  const currentApplicationIndex = (weekNumber - 1) % applicationGuide.length;
-  const currentApplication = applicationGuide[currentApplicationIndex];
+  // Fetch current week's application from database
+  const { data: currentWeek } = useQuery<WeeklySchedule>({
+    queryKey: ["/api/schedule", weekNumber],
+  });
+
+  // Transform database format to ProductCard format
+  const currentApplication = currentWeek ? {
+    products: (currentWeek.products as any[]).map((p: any) => ({
+      name: p.name,
+      quantity: p.quantity,
+      unit: p.unit,
+      type: currentWeek.applicationType === 'granular' ? 'granular' as const : 'liquid' as const
+    })),
+    waterVolume: parseFloat(currentWeek.waterVolume || "5"),
+    applicationNotes: currentWeek.applicationNotes || undefined
+  } : null;
 
   const handleLogin = () => {
     window.location.href = "/api/login";
