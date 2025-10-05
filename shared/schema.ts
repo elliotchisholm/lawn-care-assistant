@@ -62,3 +62,23 @@ export const updateInventorySchema = insertInventorySchema.partial().omit({
 export type InsertInventory = z.infer<typeof insertInventorySchema>;
 export type UpdateInventory = z.infer<typeof updateInventorySchema>;
 export type Inventory = typeof inventory.$inferSelect;
+
+// Weekly schedule for application guide
+export const weeklySchedule = pgTable("weekly_schedule", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  weekNumber: integer("week_number").notNull().unique(),
+  month: text("month").notNull(),
+  weekOfMonth: integer("week_of_month").notNull(),
+  applicationType: text("application_type").notNull(), // liquid, granular, insecticide, rest
+  waterVolume: decimal("water_volume").default("5"), // in liters for 100m²
+  products: jsonb("products").notNull(), // Array of {name, quantity, unit}
+  applicationNotes: text("application_notes"),
+  irrigationNotes: text("irrigation_notes")
+});
+
+export const insertWeeklyScheduleSchema = createInsertSchema(weeklySchedule).omit({
+  id: true
+});
+
+export type InsertWeeklySchedule = z.infer<typeof insertWeeklyScheduleSchema>;
+export type WeeklySchedule = typeof weeklySchedule.$inferSelect;
