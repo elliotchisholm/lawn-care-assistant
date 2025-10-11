@@ -86,11 +86,20 @@ export default function WeeklySchedule({ currentWeek = 1, className = "" }: Week
           <div className="space-y-3">
             {schedule.map((entry) => {
               const isCurrentWeek = currentWeek === entry.weekNumber;
-              const products = Array.isArray(entry.products) ? entry.products.filter(
-                (p: unknown): p is { name: string; quantity: number; unit: string } => 
-                  typeof p === 'object' && p !== null && 
-                  'name' in p && typeof (p as { name: unknown }).name === 'string'
-              ) : [];
+              const isRestWeek = entry.isRestWeek === 1;
+              const applicationDays = Array.isArray(entry.applicationDays) ? entry.applicationDays : [];
+              
+              // Extract all product names from all application days
+              const allProducts = applicationDays.flatMap((day: any) => 
+                Array.isArray(day.products) ? day.products.map((p: any) => ({
+                  name: p.alternativeName ? `${p.name} or ${p.alternativeName}` : p.name,
+                  type: p.type
+                })) : []
+              );
+              
+              // Get primary product type for badge color
+              const primaryType = allProducts.length > 0 ? allProducts[0].type : 'rest';
+              
               return (
                 <div 
                   key={entry.id} 
@@ -109,22 +118,24 @@ export default function WeeklySchedule({ currentWeek = 1, className = "" }: Week
                         </Badge>
                       )}
                     </div>
-                    <Badge variant={getVariantForType(entry.applicationType)} className="text-xs">
-                      {entry.applicationType}
-                    </Badge>
+                    {!isRestWeek && (
+                      <Badge variant={getVariantForType(primaryType)} className="text-xs">
+                        {primaryType}
+                      </Badge>
+                    )}
                   </div>
                   
-                  {products.length > 0 ? (
+                  {isRestWeek ? (
+                    <p className="text-sm text-muted-foreground italic">Rest week - no application</p>
+                  ) : allProducts.length > 0 ? (
                     <div className="flex flex-wrap gap-1">
-                      {products.map((product, productIndex: number) => (
+                      {allProducts.map((product, productIndex: number) => (
                         <Badge key={productIndex} variant="outline" className="text-xs">
                           {product.name}
                         </Badge>
                       ))}
                     </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground italic">Rest week - no application</p>
-                  )}
+                  ) : null}
                 </div>
               );
             })}
