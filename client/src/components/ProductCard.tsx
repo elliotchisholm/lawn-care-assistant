@@ -1,10 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Droplets, Beaker, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
+import { Droplets, Beaker, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { convertQuantity } from "@shared/unitConversions";
-
+import type { ApplicationDay } from "@shared/schema";
 
 interface InventoryItem {
   id: string;
@@ -17,26 +17,15 @@ interface InventoryItem {
   purchaseDate?: string;
 }
 
-interface Product {
-  name: string;
-  quantity: number;
-  unit: string;
-  type: 'liquid' | 'granular';
-}
-
 interface ProductCardProps {
-  products: Product[];
-  waterVolume: number;
+  applicationDays: ApplicationDay[];
   lawnSize: number;
-  applicationNotes?: string;
   className?: string;
 }
 
 export default function ProductCard({ 
-  products, 
-  waterVolume, 
+  applicationDays,
   lawnSize, 
-  applicationNotes,
   className = ""
 }: ProductCardProps) {
   const scaleFactor = lawnSize / 100; // Base calculations are per 100m²
@@ -118,74 +107,97 @@ export default function ProductCard({
       <CardContent className="space-y-4">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Droplets className="h-4 w-4" />
-          Tank mix in <span className="font-medium">{(waterVolume * scaleFactor).toFixed(1)}L</span> of water
+          <span>All tank mixes in <span className="font-medium">5L</span> of water per 100m²</span>
           <Badge variant="outline" className="text-xs">for {lawnSize}m²</Badge>
         </div>
         
         <Separator />
         
-        <div className="space-y-3">
-          {products.map((product, index) => {
-            const scaledQuantity = product.quantity * scaleFactor;
-            const inventoryStatus = getInventoryStatus(product.name, scaledQuantity, product.unit);
-            const statusDisplay = getStatusDisplay(inventoryStatus.status);
-            const StatusIcon = statusDisplay.icon;
-            
-            return (
-              <div 
-                key={index} 
-                className={`flex items-center justify-between p-3 rounded-md border ${statusDisplay.bgColor} ${statusDisplay.textColor}`}
-                data-testid={`product-${index}`}
-              >
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="font-medium" data-testid={`text-product-${index}`}>{product.name}</p>
-                    <StatusIcon className={`h-4 w-4 ${statusDisplay.color}`} />
-                  </div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Badge variant={product.type === 'liquid' ? 'default' : 'secondary'} className="text-xs">
-                      {product.type}
-                    </Badge>
-                    <Badge 
-                      variant={inventoryStatus.status === 'sufficient' ? 'default' : 'destructive'} 
-                      className="text-xs"
-                      data-testid={`badge-stock-${index}`}
-                    >
-                      {statusDisplay.badge}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center gap-2 mt-2">
-                    <p className="text-sm font-medium" data-testid={`text-current-stock-${index}`}>
-                      Stock: {inventoryStatus.currentQuantity}{product.unit}
-                    </p>
-                    <span className="text-sm text-muted-foreground">/</span>
-                    <p className="text-sm text-muted-foreground">
-                      Need: {scaledQuantity.toFixed(0)}{product.unit}
-                    </p>
-                  </div>
-                </div>
-                <div className="text-right ml-4">
-                  <p className="font-semibold text-lg" data-testid={`text-quantity-${index}`}>
-                    {scaledQuantity.toFixed(0)}{product.unit}
-                  </p>
-                  <p className="text-xs opacity-70">
-                    ({product.quantity}{product.unit}/100m²)
-                  </p>
-                </div>
+        {/* Render multi-day application structure */}
+        <div className="space-y-6">
+          {applicationDays.map((day, dayIndex) => (
+            <div key={dayIndex} className="space-y-3">
+              {day.dayLabel && (
+                <h4 className="font-semibold text-sm text-primary" data-testid={`day-label-${dayIndex}`}>
+                  {day.dayLabel}
+                </h4>
+              )}
+              
+              <div className="space-y-3">
+                {day.products.map((product, productIndex) => {
+                  const scaledQuantity = product.quantity * scaleFactor;
+                  const inventoryStatus = getInventoryStatus(product.name, scaledQuantity, product.unit);
+                  const statusDisplay = getStatusDisplay(inventoryStatus.status);
+                  const StatusIcon = statusDisplay.icon;
+                  
+                  return (
+                    <div key={productIndex}>
+                      <div 
+                        className={`flex items-center justify-between p-3 rounded-md border ${statusDisplay.bgColor} ${statusDisplay.textColor}`}
+                        data-testid={`product-${dayIndex}-${productIndex}`}
+                      >
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium" data-testid={`text-product-${dayIndex}-${productIndex}`}>
+                              {product.name}
+                              {product.alternativeName && (
+                                <span className="text-xs opacity-70"> (or {product.alternativeName})</span>
+                              )}
+                            </p>
+                            <StatusIcon className={`h-4 w-4 ${statusDisplay.color}`} />
+                          </div>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Badge variant={product.type === 'liquid' ? 'default' : product.type === 'granular' ? 'secondary' : 'destructive'} className="text-xs">
+                              {product.type}
+                            </Badge>
+                            <Badge 
+                              variant={inventoryStatus.status === 'sufficient' ? 'default' : 'destructive'} 
+                              className="text-xs"
+                              data-testid={`badge-stock-${dayIndex}-${productIndex}`}
+                            >
+                              {statusDisplay.badge}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-2 mt-2">
+                            <p className="text-sm font-medium" data-testid={`text-current-stock-${dayIndex}-${productIndex}`}>
+                              Stock: {inventoryStatus.currentQuantity}{product.unit}
+                            </p>
+                            <span className="text-sm text-muted-foreground">/</span>
+                            <p className="text-sm text-muted-foreground">
+                              Need: {scaledQuantity.toFixed(0)}{product.unit}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right ml-4">
+                          <p className="font-semibold text-lg" data-testid={`text-quantity-${dayIndex}-${productIndex}`}>
+                            {scaledQuantity.toFixed(0)}{product.unit}
+                          </p>
+                          <p className="text-xs opacity-70">
+                            ({product.quantity}{product.unit}/100m²)
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {product.productNotes && (
+                        <div className="ml-4 mt-1 p-2 bg-accent/10 rounded text-xs text-muted-foreground border-l-2 border-accent/50">
+                          └─ {product.productNotes}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })}
-        </div>
-        
-        {applicationNotes && (
-          <>
-            <Separator />
-            <div className="p-3 bg-accent/20 rounded-md border border-accent/30">
-              <p className="text-sm text-accent-foreground font-medium mb-1">Application Notes:</p>
-              <p className="text-sm text-muted-foreground">{applicationNotes}</p>
+              
+              {day.dayNotes && (
+                <div className="p-2 bg-accent/10 rounded-md border border-accent/30 text-sm italic">
+                  {day.dayNotes}
+                </div>
+              )}
+              
+              {dayIndex < applicationDays.length - 1 && <Separator className="my-2" />}
             </div>
-          </>
-        )}
+          ))}
+        </div>
       </CardContent>
     </Card>
   );

@@ -24,26 +24,9 @@ export default function Home() {
     queryKey: ["/api/schedule", weekNumber],
   });
 
-  // Validate and transform database format to ProductCard format
-  const currentApplication = currentWeek && Array.isArray(currentWeek.products) ? {
-    products: currentWeek.products
-      .filter((p: unknown): p is { name: string; quantity: number; unit: string; type?: string } => 
-        typeof p === 'object' && p !== null && 
-        'name' in p && 'quantity' in p && 'unit' in p &&
-        typeof (p as { name: unknown }).name === 'string' &&
-        typeof (p as { quantity: unknown }).quantity === 'number' &&
-        typeof (p as { unit: unknown }).unit === 'string'
-      )
-      .map((p) => ({
-        name: p.name,
-        quantity: p.quantity,
-        unit: p.unit,
-        type: (p.type === 'liquid' || p.type === 'granular' ? p.type : 
-              currentWeek.applicationType === 'granular' ? 'granular' : 'liquid') as 'liquid' | 'granular'
-      })),
-    waterVolume: parseFloat(currentWeek.waterVolume || "5"),
-    applicationNotes: currentWeek.applicationNotes || undefined
-  } : null;
+  // Check if this is a rest week or has application data
+  const isRestWeek = currentWeek?.isRestWeek === 1;
+  const hasApplicationDays = currentWeek && Array.isArray(currentWeek.applicationDays) && currentWeek.applicationDays.length > 0;
 
   const handleLogin = () => {
     window.location.href = "/api/login";
@@ -112,12 +95,30 @@ export default function Home() {
                 </CardContent>
               </Card>
             )}
-            {!isWeekLoading && !weekError && currentApplication && (
+            {!isWeekLoading && !weekError && isRestWeek && (
+              <Card data-testid="card-rest-week">
+                <CardHeader>
+                  <CardTitle className="text-center">🌿 Rest Period - No Application</CardTitle>
+                  <CardDescription className="text-center">
+                    This week requires no product application
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <p className="text-sm text-muted-foreground text-center">
+                    Focus on regular lawn maintenance:
+                  </p>
+                  <ul className="text-sm text-muted-foreground space-y-1 max-w-md mx-auto">
+                    <li>• Regular mowing at appropriate height</li>
+                    <li>• Watering as needed based on weather</li>
+                    <li>• Lawn observation and weed monitoring</li>
+                  </ul>
+                </CardContent>
+              </Card>
+            )}
+            {!isWeekLoading && !weekError && hasApplicationDays && currentWeek?.applicationDays && (
               <ProductCard
-                products={currentApplication.products}
-                waterVolume={currentApplication.waterVolume}
+                applicationDays={currentWeek.applicationDays as any}
                 lawnSize={lawnSize}
-                applicationNotes={currentApplication.applicationNotes}
               />
             )}
             
