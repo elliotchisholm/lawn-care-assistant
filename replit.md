@@ -69,7 +69,8 @@ Preferred communication style: Simple, everyday language.
   - Fetches weekly product applications from PostgreSQL database
   - Supports per-product types (liquid/granular/insecticide) for accurate mixed-type weeks
   - Week Selector: Dropdown allowing users to view any week (1-52) with current week highlighted
-  - Auto-seeding: Schedule data automatically seeded on app startup for both development and production
+  - Auto-seeding: Schedule data automatically seeded in background after server starts (optimized for deployment health checks)
+  - Idempotent seeding with upsert operations ensures safe restarts without data duplication
   - Comprehensive error handling with loading states and defensive type guards
 - **Lawn Size Calculator**: Precise quantity scaling based on user's lawn area
   - Public version: Local state (not saved)

@@ -4,8 +4,22 @@ import { setupVite, serveStatic, log } from "./vite";
 import { initializeApplication } from "./startup";
 
 const app = express();
+
+// Track initialization status for deployment health
+let isInitialized = false;
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// Middleware to ensure initialization is complete before serving schedule data
+app.use((req, res, next) => {
+  // Block schedule endpoints until initialization completes
+  if (req.path.startsWith('/api/schedule') && !isInitialized) {
+    return res.status(503).json({ 
+      message: 'Service initializing, please try again in a moment' 
+    });
+  }
+  next();
+});
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -38,9 +52,6 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // Initialize the application (create mock user, etc.)
-  await initializeApplication();
-  
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
@@ -71,5 +82,19 @@ app.use((req, res, next) => {
     reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
+    
+    // Initialize the application asynchronously after server starts
+    // This prevents blocking health checks during deployment
+    initializeApplication()
+      .then(() => {
+        isInitialized = true;
+        log('Application initialization complete');
+      })
+      .catch((error) => {
+        console.error("Background initialization failed:", error);
+        // Still mark as initialized to prevent permanent 503s
+        // The app will return empty data but won't block forever
+        isInitialized = true;
+      });
   });
 })();
