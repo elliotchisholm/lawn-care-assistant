@@ -1,13 +1,12 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { format, startOfYear, differenceInWeeks, addWeeks } from "date-fns";
+import { startOfYear, differenceInWeeks } from "date-fns";
 import { ShoppingCart, AlertTriangle, TrendingUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { convertQuantity } from "@shared/unitConversions";
-
+import type { WeeklySchedule } from "@shared/schema";
 
 interface InventoryItem {
   id: string;
@@ -18,19 +17,6 @@ interface InventoryItem {
   notes?: string;
   lastUpdated: string;
   purchaseDate?: string;
-}
-
-interface ApplicationWeek {
-  month: string;
-  week: number;
-  products: Array<{
-    name: string;
-    quantity: number;
-    unit: string;
-    type: 'liquid' | 'granular';
-  }>;
-  waterVolume: number;
-  applicationNotes?: string;
 }
 
 interface PurchaseRecommendation {
@@ -47,82 +33,6 @@ interface PurchaseRecommendationsProps {
   lawnSize: number;
 }
 
-// Mock application guide data (same as in Home.tsx)
-const applicationGuide: ApplicationWeek[] = [
-  // January
-  {
-    month: "January", week: 1, waterVolume: 5,
-    products: [
-      { name: "NZLA Wetter", quantity: 250, unit: "ml", type: "liquid" },
-      { name: "Nurture", quantity: 400, unit: "ml", type: "liquid" },
-      { name: "Root Health", quantity: 50, unit: "ml", type: "liquid" },
-      { name: "Humic+", quantity: 50, unit: "ml", type: "liquid" },
-      { name: "NZLA Iron+", quantity: 200, unit: "ml", type: "liquid" }
-    ]
-  },
-  {
-    month: "January", week: 2, waterVolume: 5,
-    products: [{ name: "NZLA Amino", quantity: 200, unit: "ml", type: "liquid" }]
-  },
-  {
-    month: "January", week: 3, waterVolume: 5,
-    products: [
-      { name: "NZLA Restore", quantity: 200, unit: "ml", type: "liquid" },
-      { name: "NZLA Iron+", quantity: 200, unit: "ml", type: "liquid" },
-      { name: "Liquid N", quantity: 350, unit: "ml", type: "liquid" }
-    ]
-  },
-  // February
-  {
-    month: "February", week: 1, waterVolume: 5,
-    products: [
-      { name: "NZLA Wetter", quantity: 250, unit: "ml", type: "liquid" },
-      { name: "Nurture", quantity: 400, unit: "ml", type: "liquid" },
-      { name: "Root Health", quantity: 50, unit: "ml", type: "liquid" },
-      { name: "Humic+", quantity: 50, unit: "ml", type: "liquid" },
-      { name: "NZLA Iron+", quantity: 200, unit: "ml", type: "liquid" }
-    ]
-  },
-  {
-    month: "February", week: 2, waterVolume: 5,
-    products: [{ name: "NZLA Amino", quantity: 200, unit: "ml", type: "liquid" }]
-  },
-  {
-    month: "February", week: 3, waterVolume: 5,
-    products: [
-      { name: "NZLA Restore", quantity: 200, unit: "ml", type: "liquid" },
-      { name: "NZLA Iron+", quantity: 200, unit: "ml", type: "liquid" }
-    ]
-  },
-  // March
-  {
-    month: "March", week: 1, waterVolume: 5,
-    products: [
-      { name: "NZLA Wetter", quantity: 250, unit: "ml", type: "liquid" },
-      { name: "Nurture", quantity: 400, unit: "ml", type: "liquid" },
-      { name: "Root Health", quantity: 50, unit: "ml", type: "liquid" },
-      { name: "Humic+", quantity: 50, unit: "ml", type: "liquid" },
-      { name: "Liquid Boost", quantity: 200, unit: "ml", type: "liquid" }
-    ]
-  },
-  {
-    month: "March", week: 2, waterVolume: 0,
-    products: [{ name: "Grub+", quantity: 15, unit: "ml", type: "liquid" }]
-  },
-  {
-    month: "March", week: 3, waterVolume: 5,
-    products: [
-      { name: "NZLA Restore", quantity: 200, unit: "ml", type: "liquid" },
-      { name: "Liquid Boost", quantity: 200, unit: "ml", type: "liquid" },
-      { name: "NZLA Amino", quantity: 200, unit: "ml", type: "liquid" }
-    ]
-  },
-  {
-    month: "March", week: 4, waterVolume: 0,
-    products: [{ name: "NZLA All Seasons", quantity: 2000, unit: "g", type: "granular" }]
-  }
-];
-
 export default function PurchaseRecommendations({ lawnSize }: PurchaseRecommendationsProps) {
   const scaleFactor = lawnSize / 100; // Base calculations are per 100m²
   
@@ -131,8 +41,17 @@ export default function PurchaseRecommendations({ lawnSize }: PurchaseRecommenda
     queryKey: ["/api/inventory"],
   });
 
+  // Fetch full schedule from API
+  const { data: fullSchedule = [], isLoading: isScheduleLoading } = useQuery<WeeklySchedule[]>({
+    queryKey: ["/api/schedule"],
+  });
+
   // Calculate purchase recommendations
   const purchaseRecommendations = useMemo(() => {
+    if (!fullSchedule || fullSchedule.length === 0) {
+      return [];
+    }
+
     const currentDate = new Date();
     const yearStart = startOfYear(currentDate);
     const currentWeekNumber = differenceInWeeks(currentDate, yearStart) + 1;
@@ -141,30 +60,41 @@ export default function PurchaseRecommendations({ lawnSize }: PurchaseRecommenda
     const weeksToAnalyze = 8;
     const productTotals = new Map<string, { total: number; unit: string; applications: number }>();
 
-    // Calculate future product needs
+    // Calculate future product needs using API data
     for (let i = 0; i < weeksToAnalyze; i++) {
-      const weekIndex = (currentWeekNumber - 1 + i) % applicationGuide.length;
-      const weekApplication = applicationGuide[weekIndex];
+      const targetWeekNumber = currentWeekNumber + i;
+      const weekData = fullSchedule.find(week => week.weekNumber === targetWeekNumber);
       
-      weekApplication.products.forEach(product => {
-        const scaledQuantity = product.quantity * scaleFactor;
-        const key = `${product.name}_${product.unit}`;
-        
-        if (productTotals.has(key)) {
-          const existing = productTotals.get(key)!;
-          productTotals.set(key, {
-            total: existing.total + scaledQuantity,
-            unit: product.unit,
-            applications: existing.applications + 1
-          });
-        } else {
-          productTotals.set(key, {
-            total: scaledQuantity,
-            unit: product.unit,
-            applications: 1
-          });
-        }
-      });
+      if (!weekData || weekData.isRestWeek === 1) {
+        continue; // Skip rest weeks
+      }
+
+      // Extract products from applicationDays
+      if (Array.isArray(weekData.applicationDays)) {
+        weekData.applicationDays.forEach((day: any) => {
+          if (Array.isArray(day.products)) {
+            day.products.forEach((product: any) => {
+              const scaledQuantity = product.quantity * scaleFactor;
+              const key = `${product.name}_${product.unit}`;
+              
+              if (productTotals.has(key)) {
+                const existing = productTotals.get(key)!;
+                productTotals.set(key, {
+                  total: existing.total + scaledQuantity,
+                  unit: product.unit,
+                  applications: existing.applications + 1
+                });
+              } else {
+                productTotals.set(key, {
+                  total: scaledQuantity,
+                  unit: product.unit,
+                  applications: 1
+                });
+              }
+            });
+          }
+        });
+      }
     }
 
     // Compare with current inventory
@@ -209,7 +139,23 @@ export default function PurchaseRecommendations({ lawnSize }: PurchaseRecommenda
     });
 
     return recommendations.sort((a, b) => a.weeksUntilEmpty - b.weeksUntilEmpty);
-  }, [inventory, lawnSize]);
+  }, [inventory, lawnSize, fullSchedule]);
+
+  if (isScheduleLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ShoppingCart className="h-5 w-5" />
+            Purchase Recommendations
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">Loading recommendations...</p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (purchaseRecommendations.length === 0) {
     return (
