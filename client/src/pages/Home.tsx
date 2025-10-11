@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { format, startOfYear, differenceInWeeks } from "date-fns";
-import { ExternalLink, Lock, BarChart3, ShoppingCart, LogIn } from "lucide-react";
+import { ExternalLink, Lock, BarChart3, ShoppingCart, LogIn, Calendar } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { type WeeklySchedule } from "@shared/schema";
@@ -11,17 +11,21 @@ import LawnSizeCalculator from "@/components/LawnSizeCalculator";
 import ProductCard from "@/components/ProductCard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function Home() {
   const { isAuthenticated } = useAuth();
   const [lawnSize, setLawnSize] = useState(100);
   const currentDate = new Date();
   const yearStart = startOfYear(currentDate);
-  const weekNumber = differenceInWeeks(currentDate, yearStart) + 1;
+  const currentWeekNumber = differenceInWeeks(currentDate, yearStart) + 1;
   
-  // Fetch current week's application from database
+  // State for selected week (defaults to current week)
+  const [selectedWeek, setSelectedWeek] = useState(currentWeekNumber);
+  
+  // Fetch selected week's application from database
   const { data: currentWeek, isLoading: isWeekLoading, error: weekError } = useQuery<WeeklySchedule>({
-    queryKey: ["/api/schedule", weekNumber],
+    queryKey: ["/api/schedule", selectedWeek],
   });
 
   // Check if this is a rest week or has application data
@@ -81,6 +85,35 @@ export default function Home() {
           
           {/* Center Column - Main Product Recommendation */}
           <div className="lg:col-span-2 space-y-4 md:space-y-6">
+            {/* Week Selector */}
+            <Card data-testid="card-week-selector">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Calendar className="h-5 w-5 text-primary" />
+                  Select Application Week
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-3">
+                  <Select 
+                    value={selectedWeek.toString()} 
+                    onValueChange={(value) => setSelectedWeek(parseInt(value))}
+                  >
+                    <SelectTrigger className="w-full" data-testid="select-week">
+                      <SelectValue placeholder="Select a week" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 52 }, (_, i) => i + 1).map((week) => (
+                        <SelectItem key={week} value={week.toString()} data-testid={`option-week-${week}`}>
+                          Week {week} {week === currentWeekNumber && "(Current Week)"}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
+            
             {isWeekLoading && (
               <Card data-testid="card-loading-application">
                 <CardContent className="p-6">
