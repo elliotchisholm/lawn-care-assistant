@@ -4,7 +4,7 @@ import { ExternalLink, Calendar } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { User, WeeklySchedule } from "@shared/schema";
+import type { User, WeeklySchedule, ApplicationDay } from "@shared/schema";
 import Header from "@/components/Header";
 import HeroSection from "@/components/HeroSection";
 import CurrentWeekDisplay from "@/components/CurrentWeekDisplay";
@@ -185,7 +185,7 @@ export default function Dashboard() {
             )}
             {!isWeekLoading && !weekError && hasApplicationDays && currentWeek?.applicationDays && (
               <ProductCard
-                applicationDays={currentWeek.applicationDays as any}
+                applicationDays={currentWeek.applicationDays as ApplicationDay[]}
                 lawnSize={lawnSize}
               />
             )}
