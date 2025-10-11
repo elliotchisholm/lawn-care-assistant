@@ -3,7 +3,7 @@ import { format, startOfYear, differenceInWeeks } from "date-fns";
 import { ExternalLink, Lock, BarChart3, ShoppingCart, LogIn, Calendar } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
-import { type WeeklySchedule } from "@shared/schema";
+import { type WeeklySchedule, type ApplicationDay } from "@shared/schema";
 import Header from "@/components/Header";
 import HeroSection from "@/components/HeroSection";
 import CurrentWeekDisplay from "@/components/CurrentWeekDisplay";
@@ -150,7 +150,7 @@ export default function Home() {
             )}
             {!isWeekLoading && !weekError && hasApplicationDays && currentWeek?.applicationDays && (
               <ProductCard
-                applicationDays={currentWeek.applicationDays as any}
+                applicationDays={currentWeek.applicationDays as ApplicationDay[]}
                 lawnSize={lawnSize}
               />
             )}
