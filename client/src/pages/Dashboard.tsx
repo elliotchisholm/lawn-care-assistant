@@ -27,26 +27,9 @@ export default function Dashboard() {
     queryKey: ["/api/schedule", weekNumber],
   });
 
-  // Validate and transform database format to ProductCard format
-  const currentApplication = currentWeek && Array.isArray(currentWeek.products) ? {
-    products: currentWeek.products
-      .filter((p: unknown): p is { name: string; quantity: number; unit: string; type?: string } => 
-        typeof p === 'object' && p !== null && 
-        'name' in p && 'quantity' in p && 'unit' in p &&
-        typeof (p as { name: unknown }).name === 'string' &&
-        typeof (p as { quantity: unknown }).quantity === 'number' &&
-        typeof (p as { unit: unknown }).unit === 'string'
-      )
-      .map((p) => ({
-        name: p.name,
-        quantity: p.quantity,
-        unit: p.unit,
-        type: (p.type === 'liquid' || p.type === 'granular' ? p.type : 
-              currentWeek.applicationType === 'granular' ? 'granular' : 'liquid') as 'liquid' | 'granular'
-      })),
-    waterVolume: parseFloat(currentWeek.waterVolume || "5"),
-    applicationNotes: currentWeek.applicationNotes || undefined
-  } : null;
+  // Check if this is a rest week or has application data
+  const isRestWeek = currentWeek?.isRestWeek === 1;
+  const hasApplicationDays = currentWeek && Array.isArray(currentWeek.applicationDays) && currentWeek.applicationDays.length > 0;
 
   // Fetch user data to get saved lawn size
   // Auth is checked by ProtectedRoute wrapper, so this is safe
@@ -150,12 +133,26 @@ export default function Dashboard() {
                 <p className="text-sm">Please try again later or contact support if the problem persists.</p>
               </div>
             )}
-            {!isWeekLoading && !weekError && currentApplication && (
+            {!isWeekLoading && !weekError && isRestWeek && (
+              <div className="bg-accent/10 border border-accent/30 rounded-lg p-6 text-center space-y-3" data-testid="card-rest-week">
+                <h3 className="text-lg font-semibold">🌿 Rest Period - No Application</h3>
+                <p className="text-sm text-muted-foreground">
+                  This week requires no product application
+                </p>
+                <div className="text-sm text-muted-foreground">
+                  <p>Focus on regular lawn maintenance:</p>
+                  <ul className="mt-2 space-y-1">
+                    <li>• Regular mowing at appropriate height</li>
+                    <li>• Watering as needed based on weather</li>
+                    <li>• Lawn observation and weed monitoring</li>
+                  </ul>
+                </div>
+              </div>
+            )}
+            {!isWeekLoading && !weekError && hasApplicationDays && currentWeek?.applicationDays && (
               <ProductCard
-                products={currentApplication.products}
-                waterVolume={currentApplication.waterVolume}
+                applicationDays={currentWeek.applicationDays as any}
                 lawnSize={lawnSize}
-                applicationNotes={currentApplication.applicationNotes}
               />
             )}
             
