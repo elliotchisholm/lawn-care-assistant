@@ -68,6 +68,8 @@ Preferred communication style: Simple, everyday language.
   - Automatically determines current week (1-52) based on ISO week number
   - Fetches weekly product applications from PostgreSQL database
   - Supports per-product types (liquid/granular/insecticide) for accurate mixed-type weeks
+  - Week Selector: Dropdown allowing users to view any week (1-52) with current week highlighted
+  - Auto-seeding: Schedule data automatically seeded on app startup for both development and production
   - Comprehensive error handling with loading states and defensive type guards
 - **Lawn Size Calculator**: Precise quantity scaling based on user's lawn area
   - Public version: Local state (not saved)
