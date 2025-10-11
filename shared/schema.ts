@@ -69,11 +69,9 @@ export const weeklySchedule = pgTable("weekly_schedule", {
   weekNumber: integer("week_number").notNull().unique(),
   month: text("month").notNull(),
   weekOfMonth: integer("week_of_month").notNull(),
-  applicationType: text("application_type").notNull(), // liquid, granular, insecticide, rest
-  waterVolume: decimal("water_volume").default("5"), // in liters for 100m²
-  products: jsonb("products").notNull(), // Array of {name, quantity, unit}
-  applicationNotes: text("application_notes"),
-  irrigationNotes: text("irrigation_notes")
+  isRestWeek: integer("is_rest_week").default(0).notNull(), // 0 = false, 1 = true (SQLite compatibility)
+  applicationDays: jsonb("application_days").notNull().default('[]'), // Array of day objects with products
+  generalNotes: text("general_notes")
 });
 
 export const insertWeeklyScheduleSchema = createInsertSchema(weeklySchedule).omit({
@@ -82,3 +80,19 @@ export const insertWeeklyScheduleSchema = createInsertSchema(weeklySchedule).omi
 
 export type InsertWeeklySchedule = z.infer<typeof insertWeeklyScheduleSchema>;
 export type WeeklySchedule = typeof weeklySchedule.$inferSelect;
+
+// TypeScript types for application day structure
+export interface ApplicationProduct {
+  name: string;
+  alternativeName: string | null;
+  quantity: number;
+  unit: string;
+  type: 'liquid' | 'granular' | 'insecticide';
+  productNotes: string | null;
+}
+
+export interface ApplicationDay {
+  dayLabel: string | null;
+  products: ApplicationProduct[];
+  dayNotes: string | null;
+}
