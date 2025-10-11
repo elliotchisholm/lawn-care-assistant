@@ -3,7 +3,7 @@ import { weeklySchedule } from "@shared/schema";
 import { parseScheduleMarkdown } from "./parseSchedule";
 import path from "path";
 
-async function seedWeeklySchedule() {
+export async function seedWeeklySchedule() {
   try {
     console.log("Seeding weekly schedule from NZLA application guide...");
     
@@ -74,19 +74,22 @@ async function seedWeeklySchedule() {
     const count = await db.select().from(weeklySchedule);
     console.log(`✓ Database now contains ${count.length} weeks`);
     
-    // Show sample of rest week
-    const restWeek = allWeeks.find(w => w.isRestWeek);
-    console.log(`\nSample rest week (Week ${restWeek?.weekNumber}):`, JSON.stringify(restWeek, null, 2));
-    
-    // Show sample of multi-day week
-    const multiDayWeek = allWeeks.find(w => w.applicationDays.length > 1);
-    console.log(`\nSample multi-day week (Week ${multiDayWeek?.weekNumber}):`, JSON.stringify(multiDayWeek, null, 2));
-    
-    process.exit(0);
+    return allWeeks.length;
   } catch (error) {
     console.error("Error seeding weekly schedule:", error);
-    process.exit(1);
+    throw error;
   }
 }
 
-seedWeeklySchedule();
+// Run seeding when executed directly (ES modules syntax)
+if (import.meta.url === `file://${process.argv[1]}`) {
+  seedWeeklySchedule()
+    .then(() => {
+      console.log("Seeding completed successfully");
+      process.exit(0);
+    })
+    .catch((error) => {
+      console.error("Seeding failed:", error);
+      process.exit(1);
+    });
+}

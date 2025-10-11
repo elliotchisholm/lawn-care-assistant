@@ -1,9 +1,13 @@
 import { storage } from "./storage";
+import { seedWeeklySchedule } from "./seedWeeklySchedule";
 
 const MOCK_USER_ID = "mock-user-123";
 
 export async function initializeApplication() {
   try {
+    // Seed weekly schedule data
+    await seedWeeklySchedule();
+    
     // Check if mock user exists
     const existingUser = await storage.getUser(MOCK_USER_ID);
     
