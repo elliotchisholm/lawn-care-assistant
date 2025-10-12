@@ -88,6 +88,7 @@ app.use((req, res, next) => {
     initializeApplication()
       .then(() => {
         isInitialized = true;
+        app.set('isInitialized', true);
         log('Application initialization complete');
       })
       .catch((error) => {
@@ -95,6 +96,7 @@ app.use((req, res, next) => {
         // Still mark as initialized to prevent permanent 503s
         // The app will return empty data but won't block forever
         isInitialized = true;
+        app.set('isInitialized', true);
       });
   });
 })();

@@ -24,6 +24,7 @@ export interface IStorage {
   // Weekly schedule methods
   getAllWeeklySchedule(): Promise<WeeklySchedule[]>;
   getWeeklyScheduleByWeek(weekNumber: number): Promise<WeeklySchedule | undefined>;
+  getScheduleCount(): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -130,6 +131,11 @@ export class DatabaseStorage implements IStorage {
   async getWeeklyScheduleByWeek(weekNumber: number): Promise<WeeklySchedule | undefined> {
     const [week] = await db.select().from(weeklySchedule).where(eq(weeklySchedule.weekNumber, weekNumber));
     return week;
+  }
+
+  async getScheduleCount(): Promise<number> {
+    const schedules = await db.select().from(weeklySchedule);
+    return schedules.length;
   }
 }
 
