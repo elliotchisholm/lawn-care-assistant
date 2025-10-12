@@ -129,37 +129,33 @@ export default function PurchaseRecommendations({ lawnSize }: PurchaseRecommenda
           weeksUntilEmpty = Math.floor(currentStock / averageWeeklyUsage);
         }
         
-        // Calculate 12-week supply based on usage rate
-        const weeklyAverage = total / weeksToAnalyze;
-        const twelveWeekSupply = weeklyAverage * 12;
-        
         // Try to find package sizes for this product
         const productPackages = packageSizes[productName];
         let packageRecommendation: string | undefined;
         let suggestedPurchase: number;
         
         if (productPackages && productPackages.length > 0) {
-          // Use package calculator to find best package combination
-          const purchase = calculatePackagePurchase(twelveWeekSupply, unit, productPackages);
+          // Use package calculator to find best package combination based on shortfall
+          const purchase = calculatePackagePurchase(shortfall, unit, productPackages);
           if (purchase) {
             suggestedPurchase = purchase.totalAmount;
             packageRecommendation = formatPackageRecommendation(purchase);
           } else {
             // Fallback to simple rounding if no package match
-            suggestedPurchase = Math.ceil(twelveWeekSupply);
+            suggestedPurchase = Math.ceil(shortfall);
           }
         } else {
           // Fallback: Smart rounding based on unit type and quantity
           if (unit === 'kg' || unit === 'L') {
-            if (twelveWeekSupply < 5) {
-              suggestedPurchase = Math.ceil(twelveWeekSupply);
-            } else if (twelveWeekSupply < 20) {
-              suggestedPurchase = Math.ceil(twelveWeekSupply / 5) * 5;
+            if (shortfall < 5) {
+              suggestedPurchase = Math.ceil(shortfall);
+            } else if (shortfall < 20) {
+              suggestedPurchase = Math.ceil(shortfall / 5) * 5;
             } else {
-              suggestedPurchase = Math.ceil(twelveWeekSupply / 10) * 10;
+              suggestedPurchase = Math.ceil(shortfall / 10) * 10;
             }
           } else {
-            suggestedPurchase = Math.ceil(twelveWeekSupply / 100) * 100;
+            suggestedPurchase = Math.ceil(shortfall / 100) * 100;
           }
         }
         
@@ -290,7 +286,7 @@ export default function PurchaseRecommendations({ lawnSize }: PurchaseRecommenda
         <Separator />
         
         <div className="text-xs text-muted-foreground text-center">
-          Suggestions based on 12-week supply calculated from your usage rate
+          Purchase amounts calculated to cover your shortfall for the next 8 weeks
         </div>
       </CardContent>
     </Card>
