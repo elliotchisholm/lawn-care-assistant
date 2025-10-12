@@ -85,18 +85,20 @@ app.use((req, res, next) => {
     
     // Initialize the application asynchronously after server starts
     // This prevents blocking health checks during deployment
+    log('Starting background initialization...');
     initializeApplication()
       .then(() => {
         isInitialized = true;
         app.set('isInitialized', true);
-        log('Application initialization complete');
+        log('✓ Application initialization complete - isInitialized set to true');
       })
       .catch((error) => {
-        console.error("Background initialization failed:", error);
+        console.error("❌ Background initialization failed:", error);
         // Still mark as initialized to prevent permanent 503s
         // The app will return empty data but won't block forever
         isInitialized = true;
         app.set('isInitialized', true);
+        log('✓ Marked as initialized despite error to prevent permanent 503s');
       });
   });
 })();
