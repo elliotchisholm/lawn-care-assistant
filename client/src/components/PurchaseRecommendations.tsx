@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { convertQuantity } from "@shared/unitConversions";
 import type { WeeklySchedule } from "@shared/schema";
+import { calculatePackagePurchase, formatPackageRecommendation, type PackageSize } from "@/lib/packageCalculator";
 
 interface InventoryItem {
   id: string;
@@ -27,6 +28,7 @@ interface PurchaseRecommendation {
   shortfall: number;
   weeksUntilEmpty: number;
   suggestedPurchase: number;
+  packageRecommendation?: string; // e.g., "3 × 1L" or "2kg"
 }
 
 interface PurchaseRecommendationsProps {
@@ -46,11 +48,18 @@ export default function PurchaseRecommendations({ lawnSize }: PurchaseRecommenda
     queryKey: ["/api/schedule"],
   });
 
+  // Fetch package sizes
+  const { data: packageSizes = {} } = useQuery<Record<string, PackageSize[]>>({
+    queryKey: ["/api/package-sizes"],
+  });
+
   // Calculate purchase recommendations
   const purchaseRecommendations = useMemo(() => {
     if (!fullSchedule || fullSchedule.length === 0) {
       return [];
     }
+    
+    console.log('Package sizes loaded:', Object.keys(packageSizes).length);
 
     const currentDate = new Date();
     const yearStart = startOfYear(currentDate);
@@ -122,24 +131,38 @@ export default function PurchaseRecommendations({ lawnSize }: PurchaseRecommenda
           weeksUntilEmpty = Math.floor(currentStock / averageWeeklyUsage);
         }
         
-        // Suggest purchasing enough for 12 weeks based on usage rate
+        // Calculate 12-week supply based on usage rate
         const weeklyAverage = total / weeksToAnalyze;
         const twelveWeekSupply = weeklyAverage * 12;
         
-        // Smart rounding based on unit type and quantity
+        // Try to find package sizes for this product
+        const productPackages = packageSizes[productName];
+        let packageRecommendation: string | undefined;
         let suggestedPurchase: number;
-        if (unit === 'kg' || unit === 'L') {
-          // For kg/L: round to nearest sensible package size
-          if (twelveWeekSupply < 5) {
-            suggestedPurchase = Math.ceil(twelveWeekSupply); // Round to nearest kg
-          } else if (twelveWeekSupply < 20) {
-            suggestedPurchase = Math.ceil(twelveWeekSupply / 5) * 5; // Round to nearest 5kg
+        
+        if (productPackages && productPackages.length > 0) {
+          // Use package calculator to find best package combination
+          const purchase = calculatePackagePurchase(twelveWeekSupply, unit, productPackages);
+          if (purchase) {
+            suggestedPurchase = purchase.totalAmount;
+            packageRecommendation = formatPackageRecommendation(purchase);
           } else {
-            suggestedPurchase = Math.ceil(twelveWeekSupply / 10) * 10; // Round to nearest 10kg
+            // Fallback to simple rounding if no package match
+            suggestedPurchase = Math.ceil(twelveWeekSupply);
           }
         } else {
-          // For g/ml: round to nearest 100g/100ml
-          suggestedPurchase = Math.ceil(twelveWeekSupply / 100) * 100;
+          // Fallback: Smart rounding based on unit type and quantity
+          if (unit === 'kg' || unit === 'L') {
+            if (twelveWeekSupply < 5) {
+              suggestedPurchase = Math.ceil(twelveWeekSupply);
+            } else if (twelveWeekSupply < 20) {
+              suggestedPurchase = Math.ceil(twelveWeekSupply / 5) * 5;
+            } else {
+              suggestedPurchase = Math.ceil(twelveWeekSupply / 10) * 10;
+            }
+          } else {
+            suggestedPurchase = Math.ceil(twelveWeekSupply / 100) * 100;
+          }
         }
         
         recommendations.push({
@@ -149,13 +172,14 @@ export default function PurchaseRecommendations({ lawnSize }: PurchaseRecommenda
           totalNeeded: total,
           shortfall,
           weeksUntilEmpty,
-          suggestedPurchase
+          suggestedPurchase,
+          packageRecommendation
         });
       }
     });
 
     return recommendations.sort((a, b) => a.weeksUntilEmpty - b.weeksUntilEmpty);
-  }, [inventory, lawnSize, fullSchedule]);
+  }, [inventory, lawnSize, fullSchedule, packageSizes]);
 
   if (isScheduleLoading) {
     return (
@@ -248,9 +272,16 @@ export default function PurchaseRecommendations({ lawnSize }: PurchaseRecommenda
               </div>
               <div className="text-right ml-4">
                 <p className="font-semibold text-lg text-destructive" data-testid="text-suggested-purchase">
-                  Buy: {rec.suggestedPurchase}{rec.unit}
+                  {rec.packageRecommendation ? (
+                    <>Buy: {rec.packageRecommendation}</>
+                  ) : (
+                    <>Buy: {rec.suggestedPurchase}{rec.unit}</>
+                  )}
                 </p>
                 <p className="text-xs text-muted-foreground">
+                  {rec.packageRecommendation && (
+                    <>= {rec.suggestedPurchase}{rec.unit} total • </>
+                  )}
                   Shortfall: {rec.shortfall.toFixed(0)}{rec.unit}
                 </p>
               </div>
