@@ -1,10 +1,11 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { startOfYear, differenceInWeeks } from "date-fns";
 import { ShoppingCart, AlertTriangle, TrendingUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Slider } from "@/components/ui/slider";
 import { convertQuantity } from "@shared/unitConversions";
 import type { WeeklySchedule } from "@shared/schema";
 import { calculatePackagePurchase, formatPackageRecommendation, type PackageSize } from "@/lib/packageCalculator";
@@ -37,6 +38,7 @@ interface PurchaseRecommendationsProps {
 
 export default function PurchaseRecommendations({ lawnSize }: PurchaseRecommendationsProps) {
   const scaleFactor = lawnSize / 100; // Base calculations are per 100m²
+  const [weeksToAnalyze, setWeeksToAnalyze] = useState(8); // Default 8 weeks, min 1, max 52
   
   // Fetch inventory data for authenticated user
   const { data: inventory = [] } = useQuery<InventoryItem[]>({
@@ -63,13 +65,12 @@ export default function PurchaseRecommendations({ lawnSize }: PurchaseRecommenda
     const yearStart = startOfYear(currentDate);
     const currentWeekNumber = differenceInWeeks(currentDate, yearStart) + 1;
     
-    // Look ahead 8 weeks
-    const weeksToAnalyze = 8;
     const productTotals = new Map<string, { total: number; unit: string; applications: number }>();
 
     // Calculate future product needs using API data
     for (let i = 0; i < weeksToAnalyze; i++) {
-      const targetWeekNumber = currentWeekNumber + i;
+      // Calculate target week with wrapping (weeks 1-52)
+      const targetWeekNumber = ((currentWeekNumber + i - 1) % 52) + 1;
       const weekData = fullSchedule.find(week => week.weekNumber === targetWeekNumber);
       
       if (!weekData || weekData.isRestWeek === 1) {
@@ -173,7 +174,7 @@ export default function PurchaseRecommendations({ lawnSize }: PurchaseRecommenda
     });
 
     return recommendations.sort((a, b) => a.weeksUntilEmpty - b.weeksUntilEmpty);
-  }, [inventory, lawnSize, fullSchedule, packageSizes]);
+  }, [inventory, lawnSize, fullSchedule, packageSizes, weeksToAnalyze]);
 
   if (isScheduleLoading) {
     return (
@@ -204,7 +205,7 @@ export default function PurchaseRecommendations({ lawnSize }: PurchaseRecommenda
           <div className="text-center py-8 text-muted-foreground">
             <TrendingUp className="h-12 w-12 mx-auto mb-4 opacity-50" />
             <p>Your inventory looks good!</p>
-            <p className="text-sm">No immediate purchases needed for the next 8 weeks</p>
+            <p className="text-sm">No immediate purchases needed for the next {weeksToAnalyze} {weeksToAnalyze === 1 ? 'week' : 'weeks'}</p>
           </div>
         </CardContent>
       </Card>
@@ -225,8 +226,28 @@ export default function PurchaseRecommendations({ lawnSize }: PurchaseRecommenda
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="text-sm text-muted-foreground">
-          Based on next 8 weeks of applications for your {lawnSize}m² lawn
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium" data-testid="label-weeks-selector">
+              Look ahead: {weeksToAnalyze} {weeksToAnalyze === 1 ? 'week' : 'weeks'}
+            </label>
+            <span className="text-xs text-muted-foreground">
+              {lawnSize}m² lawn
+            </span>
+          </div>
+          <Slider
+            value={[weeksToAnalyze]}
+            onValueChange={(value) => setWeeksToAnalyze(value[0])}
+            min={1}
+            max={52}
+            step={1}
+            className="w-full"
+            data-testid="slider-weeks"
+          />
+          <div className="flex justify-between text-xs text-muted-foreground">
+            <span>1 week</span>
+            <span>52 weeks</span>
+          </div>
         </div>
         
         <Separator />
@@ -286,7 +307,7 @@ export default function PurchaseRecommendations({ lawnSize }: PurchaseRecommenda
         <Separator />
         
         <div className="text-xs text-muted-foreground text-center">
-          Purchase amounts calculated to cover your shortfall for the next 8 weeks
+          Purchase amounts calculated to cover your shortfall for the next {weeksToAnalyze} {weeksToAnalyze === 1 ? 'week' : 'weeks'}
         </div>
       </CardContent>
     </Card>
