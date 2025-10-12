@@ -82,7 +82,12 @@ export async function seedWeeklySchedule() {
 }
 
 // Run seeding when executed directly (ES modules syntax)
-if (import.meta.url === `file://${process.argv[1]}`) {
+// Only run standalone if explicitly called with tsx/node directly
+// This prevents execution when bundled by esbuild for production
+const isMainModule = import.meta.url === `file://${process.argv[1]}`;
+const isStandalone = process.env.NODE_ENV !== 'production' && isMainModule;
+
+if (isStandalone) {
   seedWeeklySchedule()
     .then(() => {
       console.log("Seeding completed successfully");
