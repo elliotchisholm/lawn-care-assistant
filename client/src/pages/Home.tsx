@@ -123,8 +123,11 @@ export default function Home() {
             )}
             {weekError && (
               <Card data-testid="card-error-application">
-                <CardContent className="p-6">
-                  <p className="text-destructive">Failed to load weekly application schedule. Please try again later.</p>
+                <CardContent className="p-6 space-y-2">
+                  <p className="text-destructive font-medium">Failed to load weekly application schedule</p>
+                  <p className="text-sm text-muted-foreground">
+                    {weekError instanceof Error ? weekError.message : 'Please try again later.'}
+                  </p>
                 </CardContent>
               </Card>
             )}

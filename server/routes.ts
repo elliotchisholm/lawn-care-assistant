@@ -9,6 +9,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication middleware
   await setupAuth(app);
 
+  // Health check and diagnostic endpoint
+  app.get('/api/health', async (_req, res) => {
+    try {
+      const scheduleCount = await storage.getScheduleCount();
+      const isInitialized = (app.get('isInitialized') as boolean) || false;
+      
+      res.json({
+        status: 'ok',
+        initialized: isInitialized,
+        database: {
+          connected: true,
+          scheduleWeeksLoaded: scheduleCount
+        },
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      res.status(503).json({
+        status: 'error',
+        initialized: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
