@@ -58,8 +58,6 @@ export default function PurchaseRecommendations({ lawnSize }: PurchaseRecommenda
     if (!fullSchedule || fullSchedule.length === 0) {
       return [];
     }
-    
-    console.log('Package sizes loaded:', Object.keys(packageSizes).length);
 
     const currentDate = new Date();
     const yearStart = startOfYear(currentDate);
