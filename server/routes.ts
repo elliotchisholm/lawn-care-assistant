@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { insertInventorySchema, updateInventorySchema } from "@shared/schema";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { z } from "zod";
+import { parsePackageSizes } from "./parsePackageSizes";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication middleware
@@ -187,6 +188,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching week schedule:", error);
       res.status(500).json({ error: "Failed to fetch week schedule" });
+    }
+  });
+
+  // Package sizes endpoint (public - no auth required)
+  app.get("/api/package-sizes", async (_req, res) => {
+    try {
+      const packageMap = parsePackageSizes();
+      // Convert Map to object for JSON serialization
+      const packageData: Record<string, any[]> = {};
+      packageMap.forEach((packages, productName) => {
+        packageData[productName] = packages;
+      });
+      res.json(packageData);
+    } catch (error) {
+      console.error("Error fetching package sizes:", error);
+      res.status(500).json({ error: "Failed to fetch package sizes" });
     }
   });
 
