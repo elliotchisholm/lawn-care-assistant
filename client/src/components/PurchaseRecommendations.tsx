@@ -122,9 +122,9 @@ export default function PurchaseRecommendations({ lawnSize }: PurchaseRecommenda
           weeksUntilEmpty = Math.floor(currentStock / averageWeeklyUsage);
         }
         
-        // Suggest purchasing enough for 12 weeks plus a buffer
+        // Suggest purchasing enough for 12 weeks based on usage rate
         const weeklyAverage = total / weeksToAnalyze;
-        const twelveWeekSupply = weeklyAverage * 12 + shortfall;
+        const twelveWeekSupply = weeklyAverage * 12;
         
         // Smart rounding based on unit type and quantity
         let suggestedPurchase: number;
@@ -261,7 +261,7 @@ export default function PurchaseRecommendations({ lawnSize }: PurchaseRecommenda
         <Separator />
         
         <div className="text-xs text-muted-foreground text-center">
-          Suggestions include 12-week supply plus buffer for optimal lawn care
+          Suggestions based on 12-week supply calculated from your usage rate
         </div>
       </CardContent>
     </Card>
