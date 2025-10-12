@@ -61,6 +61,19 @@ export function calculatePackagePurchase(
   const quantity = Math.ceil(neededAmount / selectedPackage.amount);
   const totalAmount = quantity * selectedPackage.amount;
 
+  // Optimization: If total amount matches a larger single package exactly, use that instead
+  // Example: 5 × 1L = 5L, so recommend 1 × 5L instead
+  if (quantity > 1) {
+    const exactMatchPackage = sortedPackages.find(pkg => pkg.amount === totalAmount);
+    if (exactMatchPackage) {
+      return {
+        quantity: 1,
+        packageSize: exactMatchPackage,
+        totalAmount: exactMatchPackage.amount
+      };
+    }
+  }
+
   return {
     quantity,
     packageSize: selectedPackage,
