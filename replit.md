@@ -102,4 +102,11 @@ Preferred communication style: Simple, everyday language.
 - **Date-fns**: Date manipulation and formatting utilities
 - **TanStack Query**: Server state synchronization and caching
 
+### Deployment Configuration
+- **Build Process**: Vite builds frontend, esbuild bundles backend into `dist/index.js`
+- **Production Runtime**: Node.js runs compiled JavaScript in production environment
+- **Initialization**: Background seeding runs asynchronously after server starts to avoid blocking health checks
+- **Health Monitoring**: `/api/health` endpoint reports initialization status and database connection
+- **Critical Fix**: Seed module includes environment check (`NODE_ENV !== 'production'`) to prevent standalone execution code from calling `process.exit()` in bundled production builds
+
 The application architecture prioritizes performance, accessibility, and maintainability while providing a comprehensive solution for lawn care management and product recommendations.
