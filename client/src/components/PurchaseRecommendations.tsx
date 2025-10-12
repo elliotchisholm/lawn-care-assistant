@@ -124,7 +124,23 @@ export default function PurchaseRecommendations({ lawnSize }: PurchaseRecommenda
         
         // Suggest purchasing enough for 12 weeks plus a buffer
         const weeklyAverage = total / weeksToAnalyze;
-        const suggestedPurchase = Math.ceil((weeklyAverage * 12 + shortfall) / 100) * 100; // Round up to nearest 100
+        const twelveWeekSupply = weeklyAverage * 12 + shortfall;
+        
+        // Smart rounding based on unit type and quantity
+        let suggestedPurchase: number;
+        if (unit === 'kg' || unit === 'L') {
+          // For kg/L: round to nearest sensible package size
+          if (twelveWeekSupply < 5) {
+            suggestedPurchase = Math.ceil(twelveWeekSupply); // Round to nearest kg
+          } else if (twelveWeekSupply < 20) {
+            suggestedPurchase = Math.ceil(twelveWeekSupply / 5) * 5; // Round to nearest 5kg
+          } else {
+            suggestedPurchase = Math.ceil(twelveWeekSupply / 10) * 10; // Round to nearest 10kg
+          }
+        } else {
+          // For g/ml: round to nearest 100g/100ml
+          suggestedPurchase = Math.ceil(twelveWeekSupply / 100) * 100;
+        }
         
         recommendations.push({
           productName,
