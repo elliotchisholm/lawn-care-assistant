@@ -376,7 +376,7 @@
 ## November - Week 4 (ISO Week 48)
 
 **Day 1:**
-- NZLA All Seasons: 2kg
+- All Seasons: 2kg
 - Follow with 5-7mm irrigation
 
 **Day 2 (or following days):**
