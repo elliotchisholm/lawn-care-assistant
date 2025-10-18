@@ -14,12 +14,12 @@ Preferred communication style: Simple, everyday language.
 
 ### Frontend Architecture
 - **Framework**: React 18 with TypeScript, using Vite as the build tool
-- **Routing**: Wouter for lightweight client-side routing with ProtectedRoute wrapper for authenticated pages
+- **Routing**: Wouter for lightweight client-side routing (single-page app with conditional rendering)
 - **State Management**: TanStack Query (React Query) for server state management
 - **UI Components**: shadcn/ui component library built on Radix UI primitives
 - **Styling**: Tailwind CSS with custom design tokens and utility-first approach
 - **Form Handling**: React Hook Form with Zod validation
-- **Authentication**: Custom useAuth hook for managing authentication state across components
+- **Authentication**: Custom useAuth hook for managing authentication state and conditional feature unlocking
 
 ### Backend Architecture
 - **Framework**: Express.js with TypeScript
@@ -44,11 +44,11 @@ Preferred communication style: Simple, everyday language.
 
 ### Authentication and Authorization
 - **Authentication Method**: Google SSO via Replit Auth (OIDC)
-- **Tiered Access Model**: Public features accessible without login; protected features require authentication
+- **Tiered Access Model**: Public features accessible without login; protected features unlock when authenticated
 - **Session Storage**: Server-side sessions stored in PostgreSQL
-- **Route Protection**: ProtectedRoute component guards authenticated pages, preventing unauthorized access
+- **Feature Protection**: Conditional rendering shows locked previews for unauthenticated users, unlocks full features after sign-in
 - **Data Isolation**: User-scoped inventory and recommendation data
-- **Security**: Client-side route guards prevent protected queries from executing for unauthenticated users
+- **Security**: Query guards prevent protected API calls from executing for unauthenticated users
 
 ### Design System and Theming
 - **Color Palette**: Nature-focused green theme with light/dark mode support
@@ -57,17 +57,19 @@ Preferred communication style: Simple, everyday language.
 - **Responsive Design**: Mobile-first approach with touch-friendly interfaces
 
 ### Application Structure
-- **Public Home Page (/)**: Accessible without authentication
-  - Lawn Size Calculator (local state, no save)
-  - Current Week Display showing this week's application
-  - Product Application recommendations with quantity calculations
-  - Locked feature previews (Inventory & Purchase Recommendations) with sign-in CTAs
-- **Protected Dashboard (/dashboard)**: Requires authentication
-  - Full Lawn Size Calculator with persistent storage
-  - Current Week Display
-  - Product Application recommendations
-  - Product Inventory Management with unit conversions (kg↔g, L↔ml)
-  - Purchase Recommendations based on inventory and application needs
+- **Single-Page Application (/)**: All features on one page, features unlock when authenticated
+  - **Always Visible**:
+    - Lawn Size Calculator
+    - Current Week Display showing this week's application
+    - Week Selector dropdown to view any of the 52 weeks
+    - Product Application recommendations with quantity calculations
+  - **Unlocked When Authenticated**:
+    - Lawn Size persistence (saves to database with real-time indicators)
+    - Product Inventory Management with unit conversions (kg↔g, L↔ml)
+    - Purchase Recommendations based on inventory and upcoming applications
+  - **Before Sign-In**:
+    - Lawn Size Calculator uses local state only (not saved)
+    - Locked preview cards for Inventory & Purchase Recommendations with sign-in CTAs
   
 ### Core Application Features
 - **Weekly Application Scheduler**: Database-driven scheduler containing all 52 weeks from NZLA application guide
@@ -79,8 +81,8 @@ Preferred communication style: Simple, everyday language.
   - Idempotent seeding with upsert operations ensures safe restarts without data duplication
   - Comprehensive error handling with loading states and defensive type guards
 - **Lawn Size Calculator**: Precise quantity scaling based on user's lawn area
-  - Public version: Local state (not saved)
-  - Dashboard version: Persistent storage with real-time save indicators
+  - Unauthenticated: Local state only (not saved)
+  - Authenticated: Persistent storage with real-time save indicators and database synchronization
 - **Product Recommendation Engine**: Database-backed NZLA product suggestions with detailed application instructions
   - All 52 weeks pre-seeded from official NZLA application guide
   - Each product includes type field for accurate display and calculations
