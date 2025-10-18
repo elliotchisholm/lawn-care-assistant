@@ -27,9 +27,6 @@ This file defines the available package sizes for each NZLA product. The purchas
 ### Amino
 - Available sizes: 1L, 5L, 20L
 
-### Amino+
-- Available sizes: 1L, 5L, 20L
-
 ### Restore
 - Available sizes: 1L, 5L, 20L
 

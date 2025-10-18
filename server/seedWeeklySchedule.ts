@@ -12,38 +12,9 @@ export async function seedWeeklySchedule() {
     const parsedWeeks = parseScheduleMarkdown(scheduleFile);
     
     console.log(`Parsed ${parsedWeeks.length} weeks from schedule file`);
+    console.log(`Total weeks to seed: ${parsedWeeks.length}`);
     
-    // Add missing weeks 33, 34, 35 as rest weeks
-    const missingWeeks = [
-      {
-        weekNumber: 33,
-        month: "August",
-        weekOfMonth: 5,
-        isRestWeek: true,
-        applicationDays: [],
-        generalNotes: null
-      },
-      {
-        weekNumber: 34,
-        month: "September",
-        weekOfMonth: 1,
-        isRestWeek: true,
-        applicationDays: [],
-        generalNotes: null
-      },
-      {
-        weekNumber: 35,
-        month: "September",
-        weekOfMonth: 1,
-        isRestWeek: true,
-        applicationDays: [],
-        generalNotes: null
-      }
-    ];
-    
-    const allWeeks = [...parsedWeeks, ...missingWeeks].sort((a, b) => a.weekNumber - b.weekNumber);
-    
-    console.log(`Total weeks to seed: ${allWeeks.length}`);
+    const allWeeks = parsedWeeks;
     
     // Convert to database format and insert
     for (const week of allWeeks) {

@@ -257,6 +257,21 @@
 
 ---
 
+## August - Week 5 (ISO Week 33)
+
+
+---
+
+## August - Week 6 (ISO Week 34)
+
+
+---
+
+## August - Week 7 (ISO Week 35)
+
+
+---
+
 ## September - Week 1 (ISO Week 36)
 
 **Day 1:**
@@ -357,7 +372,7 @@
 ## November - Week 4 (ISO Week 47)
 
 **Day 1:**
-- All Seasons: 2kg
+- NZLA All Seasons: 2kg
 - Follow with 5-7mm irrigation
 
 **Day 2 (or following days):**
@@ -398,3 +413,7 @@
 - Iron+: 200ml
 - Liquid N: 350ml
  - Liquid N needs irrigation within 24 hours (allow 6-8 hours for foliar absorption first)
+
+---
+
+## December - Week 5 (ISO Week 52)
