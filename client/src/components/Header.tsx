@@ -1,5 +1,4 @@
-import { Leaf, Menu, LogOut, ExternalLink, LogIn, LayoutDashboard } from "lucide-react";
-import { Link, useLocation } from "wouter";
+import { Leaf, Menu, LogOut, ExternalLink, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ThemeToggle } from "./theme-toggle";
@@ -12,7 +11,6 @@ interface HeaderProps {
 
 export default function Header({ onMenuClick }: HeaderProps) {
   const { user, isAuthenticated } = useAuth();
-  const [location] = useLocation();
 
   const handleLogout = () => {
     window.location.href = "/api/logout";
@@ -83,19 +81,6 @@ export default function Header({ onMenuClick }: HeaderProps) {
             <ThemeToggle />
             {isAuthenticated && user ? (
               <>
-                {location !== "/dashboard" && (
-                  <Link href="/dashboard">
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      className="gap-2"
-                      data-testid="button-dashboard"
-                    >
-                      <LayoutDashboard className="h-4 w-4" />
-                      <span className="hidden md:inline">Dashboard</span>
-                    </Button>
-                  </Link>
-                )}
                 <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground">
                   <Avatar className="h-8 w-8">
                     <AvatarImage src={(user as User).profileImageUrl || undefined} />
