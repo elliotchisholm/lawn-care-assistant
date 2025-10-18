@@ -1,14 +1,19 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format, startOfYear, differenceInWeeks } from "date-fns";
 import { ExternalLink, Lock, BarChart3, ShoppingCart, LogIn, Calendar } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { useQuery } from "@tanstack/react-query";
-import { type WeeklySchedule, type ApplicationDay } from "@shared/schema";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { type User, type WeeklySchedule, type ApplicationDay } from "@shared/schema";
 import Header from "@/components/Header";
 import HeroSection from "@/components/HeroSection";
 import CurrentWeekDisplay from "@/components/CurrentWeekDisplay";
 import LawnSizeCalculator from "@/components/LawnSizeCalculator";
 import ProductCard from "@/components/ProductCard";
+import InventoryManager from "@/components/InventoryManager";
+import PurchaseRecommendations from "@/components/PurchaseRecommendations";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -16,6 +21,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 export default function Home() {
   const { isAuthenticated } = useAuth();
   const [lawnSize, setLawnSize] = useState(100);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const { toast } = useToast();
   const currentDate = new Date();
   const yearStart = startOfYear(currentDate);
   const currentWeekNumber = differenceInWeeks(currentDate, yearStart) + 1;
@@ -31,6 +38,51 @@ export default function Home() {
   // Check if this is a rest week or has application data
   const isRestWeek = currentWeek?.isRestWeek === 1;
   const hasApplicationDays = currentWeek && Array.isArray(currentWeek.applicationDays) && currentWeek.applicationDays.length > 0;
+
+  // Fetch user data to get saved lawn size (only when authenticated)
+  const { data: user, isLoading: isUserLoading } = useQuery<User>({
+    queryKey: ['/api/auth/user'],
+    enabled: isAuthenticated,
+  });
+
+  // Update lawn size mutation (only used when authenticated)
+  const updateLawnSizeMutation = useMutation({
+    mutationFn: async (newSize: number) => {
+      setSaveSuccess(false);
+      return await apiRequest('PUT', '/api/user/lawn-size', { lawnSize: newSize });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+      setSaveSuccess(true);
+      toast({
+        title: "Lawn size saved",
+        description: "Your lawn size has been updated successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      setSaveSuccess(false);
+      toast({
+        title: "Error saving lawn size",
+        description: error.message || "Failed to save lawn size. Please try again.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Update local state when user data is loaded
+  useEffect(() => {
+    if (user?.lawnSize) {
+      setLawnSize(user.lawnSize);
+    }
+  }, [user?.lawnSize]);
+
+  // Handle lawn size changes
+  const handleLawnSizeChange = (newSize: number) => {
+    setLawnSize(newSize);
+    if (isAuthenticated) {
+      updateLawnSizeMutation.mutate(newSize);
+    }
+  };
 
   const handleLogin = () => {
     window.location.href = "/api/login";
@@ -76,11 +128,50 @@ export default function Home() {
             <CurrentWeekDisplay />
             <LawnSizeCalculator 
               currentSize={lawnSize} 
-              onSizeChange={setLawnSize}
-              isSaving={false}
-              isLoading={false}
-              saveSuccess={false}
+              onSizeChange={handleLawnSizeChange}
+              isSaving={updateLawnSizeMutation.isPending}
+              isLoading={isUserLoading}
+              saveSuccess={saveSuccess}
             />
+            
+            {/* Show Inventory Manager when authenticated, otherwise show locked preview */}
+            {isAuthenticated ? (
+              <InventoryManager />
+            ) : (
+              <Card className="relative overflow-hidden border-2 border-dashed opacity-60">
+                <div className="absolute inset-0 bg-background/90 backdrop-blur-[2px] z-10 flex items-center justify-center">
+                  <div className="text-center space-y-3 p-6">
+                    <Lock className="h-12 w-12 mx-auto text-muted-foreground" />
+                    <div>
+                      <h3 className="font-semibold text-lg mb-1">Sign in to unlock Inventory Tracking</h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Track your product stocks, monitor inventory levels, and never run out of essential lawn care products.
+                      </p>
+                      <Button onClick={handleLogin} data-testid="button-login-inventory" className="opacity-100">
+                        <LogIn className="h-4 w-4 mr-2" />
+                        Sign In to Unlock
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+                <CardHeader className="blur-sm">
+                  <CardTitle className="flex items-center gap-2">
+                    <BarChart3 className="h-5 w-5 text-primary" />
+                    Product Inventory
+                  </CardTitle>
+                  <CardDescription>
+                    Track your current stock levels
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="blur-sm">
+                  <div className="space-y-3">
+                    <div className="h-20 bg-muted rounded-md"></div>
+                    <div className="h-20 bg-muted rounded-md"></div>
+                    <div className="h-20 bg-muted rounded-md"></div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
           
           {/* Center Column - Main Product Recommendation */}
@@ -115,41 +206,29 @@ export default function Home() {
             </Card>
             
             {isWeekLoading && (
-              <Card data-testid="card-loading-application">
-                <CardContent className="p-6">
-                  <p className="text-muted-foreground">Loading weekly application...</p>
-                </CardContent>
-              </Card>
+              <Skeleton className="h-96 w-full" data-testid="skeleton-loading-application" />
             )}
             {weekError && (
-              <Card data-testid="card-error-application">
-                <CardContent className="p-6 space-y-2">
-                  <p className="text-destructive font-medium">Failed to load weekly application schedule</p>
-                  <p className="text-sm text-muted-foreground">
-                    {weekError instanceof Error ? weekError.message : 'Please try again later.'}
-                  </p>
-                </CardContent>
-              </Card>
+              <div className="bg-destructive/10 border border-destructive text-destructive px-4 py-3 rounded" data-testid="error-application">
+                <p className="font-medium">Failed to load weekly application schedule</p>
+                <p className="text-sm">Please try again later or contact support if the problem persists.</p>
+              </div>
             )}
             {!isWeekLoading && !weekError && isRestWeek && (
-              <Card data-testid="card-rest-week">
-                <CardHeader>
-                  <CardTitle className="text-center">🌿 Rest Period - No Application</CardTitle>
-                  <CardDescription className="text-center">
-                    This week requires no product application
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <p className="text-sm text-muted-foreground text-center">
-                    Focus on regular lawn maintenance:
-                  </p>
-                  <ul className="text-sm text-muted-foreground space-y-1 max-w-md mx-auto">
+              <div className="bg-accent/10 border border-accent/30 rounded-lg p-6 text-center space-y-3" data-testid="card-rest-week">
+                <h3 className="text-lg font-semibold">🌿 Rest Period - No Application</h3>
+                <p className="text-sm text-muted-foreground">
+                  This week requires no product application
+                </p>
+                <div className="text-sm text-muted-foreground">
+                  <p>Focus on regular lawn maintenance:</p>
+                  <ul className="mt-2 space-y-1">
                     <li>• Regular mowing at appropriate height</li>
                     <li>• Watering as needed based on weather</li>
                     <li>• Lawn observation and weed monitoring</li>
                   </ul>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             )}
             {!isWeekLoading && !weekError && hasApplicationDays && currentWeek?.applicationDays && (
               <ProductCard
@@ -158,78 +237,42 @@ export default function Home() {
               />
             )}
             
-            {/* Locked Feature Preview Cards */}
-            {!isAuthenticated && (
-              <div className="space-y-4 md:space-y-6">
-                {/* Inventory Manager - Locked */}
-                <Card className="relative overflow-hidden border-2 border-dashed opacity-60">
-                  <div className="absolute inset-0 bg-background/90 backdrop-blur-[2px] z-10 flex items-center justify-center">
-                    <div className="text-center space-y-3 p-6">
-                      <Lock className="h-12 w-12 mx-auto text-muted-foreground" />
-                      <div>
-                        <h3 className="font-semibold text-lg mb-1">Sign in to unlock Inventory Tracking</h3>
-                        <p className="text-sm text-muted-foreground mb-4">
-                          Track your product stocks, monitor inventory levels, and never run out of essential lawn care products.
-                        </p>
-                        <Button onClick={handleLogin} data-testid="button-login-inventory" className="opacity-100">
-                          <LogIn className="h-4 w-4 mr-2" />
-                          Sign In to Unlock
-                        </Button>
-                      </div>
+            {/* Show Purchase Recommendations when authenticated, otherwise show locked preview */}
+            {isAuthenticated ? (
+              <PurchaseRecommendations lawnSize={lawnSize} />
+            ) : (
+              <Card className="relative overflow-hidden border-2 border-dashed opacity-60">
+                <div className="absolute inset-0 bg-background/90 backdrop-blur-[2px] z-10 flex items-center justify-center">
+                  <div className="text-center space-y-3 p-6">
+                    <Lock className="h-12 w-12 mx-auto text-muted-foreground" />
+                    <div>
+                      <h3 className="font-semibold text-lg mb-1">Sign in to unlock Purchase Recommendations</h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Get 8-week forecasts, automatic purchase alerts, and suggested quantities based on your inventory.
+                      </p>
+                      <Button onClick={handleLogin} data-testid="button-login-purchase" className="opacity-100">
+                        <LogIn className="h-4 w-4 mr-2" />
+                        Sign In to Unlock
+                      </Button>
                     </div>
                   </div>
-                  <CardHeader className="blur-sm">
-                    <CardTitle className="flex items-center gap-2">
-                      <BarChart3 className="h-5 w-5 text-primary" />
-                      Product Inventory
-                    </CardTitle>
-                    <CardDescription>
-                      Track your current stock levels
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="blur-sm">
-                    <div className="space-y-3">
-                      <div className="h-20 bg-muted rounded-md"></div>
-                      <div className="h-20 bg-muted rounded-md"></div>
-                      <div className="h-20 bg-muted rounded-md"></div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Purchase Recommendations - Locked */}
-                <Card className="relative overflow-hidden border-2 border-dashed opacity-60">
-                  <div className="absolute inset-0 bg-background/90 backdrop-blur-[2px] z-10 flex items-center justify-center">
-                    <div className="text-center space-y-3 p-6">
-                      <Lock className="h-12 w-12 mx-auto text-muted-foreground" />
-                      <div>
-                        <h3 className="font-semibold text-lg mb-1">Sign in to unlock Purchase Recommendations</h3>
-                        <p className="text-sm text-muted-foreground mb-4">
-                          Get 8-week forecasts, automatic purchase alerts, and suggested quantities based on your inventory.
-                        </p>
-                        <Button onClick={handleLogin} data-testid="button-login-purchase" className="opacity-100">
-                          <LogIn className="h-4 w-4 mr-2" />
-                          Sign In to Unlock
-                        </Button>
-                      </div>
-                    </div>
+                </div>
+                <CardHeader className="blur-sm">
+                  <CardTitle className="flex items-center gap-2">
+                    <ShoppingCart className="h-5 w-5 text-primary" />
+                    Purchase Recommendations
+                  </CardTitle>
+                  <CardDescription>
+                    Smart purchase planning and alerts
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="blur-sm">
+                  <div className="space-y-3">
+                    <div className="h-16 bg-muted rounded-md"></div>
+                    <div className="h-16 bg-muted rounded-md"></div>
                   </div>
-                  <CardHeader className="blur-sm">
-                    <CardTitle className="flex items-center gap-2">
-                      <ShoppingCart className="h-5 w-5 text-primary" />
-                      Purchase Recommendations
-                    </CardTitle>
-                    <CardDescription>
-                      Smart purchase planning and alerts
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="blur-sm">
-                    <div className="space-y-3">
-                      <div className="h-16 bg-muted rounded-md"></div>
-                      <div className="h-16 bg-muted rounded-md"></div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+                </CardContent>
+              </Card>
             )}
           </div>
         </div>
