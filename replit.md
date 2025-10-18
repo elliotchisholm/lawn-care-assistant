@@ -35,6 +35,12 @@ Preferred communication style: Simple, everyday language.
   - Inventory table for tracking product stocks and quantities with unique constraint per user per product
   - Weekly Schedule table containing all 52 weeks of NZLA application guide data with per-product types
   - Shared schema with Zod validation integration
+- **Product Name Standardization**: Canonical product naming system ensures consistency
+  - Single source of truth: `shared/canonicalProductNames.ts` defines all 17 official NZLA products
+  - Normalization function handles common variations (case-insensitive, "NZLA" prefix handling, "Plus" vs "+")
+  - Database migration script (`server/migrateProductNames.ts`) safely updates inventory to canonical names
+  - Hybrid storage: complex queryable data in database, simple reference data (package sizes) in files
+  - All product names consistent across inventory, weekly applications, and purchase recommendations
 
 ### Authentication and Authorization
 - **Authentication Method**: Google SSO via Replit Auth (OIDC)
