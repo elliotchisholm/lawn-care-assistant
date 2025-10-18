@@ -2,9 +2,14 @@
 
 This file defines the available package sizes for each NZLA product. The purchase recommendation system will use these sizes to calculate the smallest package needed to cover your shortfall.
 
+**IMPORTANT:** Product names must exactly match the canonical names defined in the application guide.
+
 ## Liquid Products (ml/L)
 
 ### NZLA Wetter
+- Available sizes: 1L, 5L, 20L
+
+### Wetter 3W
 - Available sizes: 1L, 5L, 20L
 
 ### Nurture
@@ -16,13 +21,16 @@ This file defines the available package sizes for each NZLA product. The purchas
 ### Humic+
 - Available sizes: 1L, 5L, 20L
 
-### Iron+ 
+### Iron+
 - Available sizes: 1L, 5L, 20L
 
-### Amino (Amino, Amino+)
+### Amino
 - Available sizes: 1L, 5L, 20L
 
-### Restore (Restore)
+### Amino+
+- Available sizes: 1L, 5L, 20L
+
+### Restore
 - Available sizes: 1L, 5L, 20L
 
 ### Liquid N
@@ -40,12 +48,9 @@ This file defines the available package sizes for each NZLA product. The purchas
 ### Liquid Starter
 - Available sizes: 1L, 5L, 20L
 
-### Wetter 3W
-- Available sizes: 1L, 5L, 20L
-
 ## Granular Products (g/kg)
 
-### NZLA All Seasons (All Seasons)
+### NZLA All Seasons
 - Available sizes: 4kg, 6kg, 10kg, 20kg
 
 ---
