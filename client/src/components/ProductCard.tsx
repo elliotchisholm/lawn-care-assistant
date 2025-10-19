@@ -63,6 +63,18 @@ export default function ProductCard({
 
   const { data: appliedWeek } = useQuery<AppliedWeek | null>({
     queryKey: ["/api/applied-weeks", weekNumber, user?.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/applied-weeks/${weekNumber}`, {
+        credentials: "include",
+      });
+      if (res.status === 404) {
+        return null;
+      }
+      if (!res.ok) {
+        throw new Error(`Failed to fetch applied week: ${res.statusText}`);
+      }
+      return res.json();
+    },
     enabled: isAuthenticated,
   });
 
