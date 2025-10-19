@@ -26,7 +26,7 @@ interface MarkAsAppliedDialogProps {
   onClose: () => void;
   weekNumber: number;
   adjustments: ProductAdjustment[];
-  onConfirm: () => void;
+  onConfirm: (adjustments: ProductAdjustment[]) => void;
   isPending?: boolean;
 }
 
@@ -131,7 +131,7 @@ export default function MarkAsAppliedDialog({
             Cancel
           </Button>
           <Button
-            onClick={onConfirm}
+            onClick={() => onConfirm(adjustments)}
             disabled={!canApply || isPending}
             data-testid="button-confirm-mark-applied"
           >

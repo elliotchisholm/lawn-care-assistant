@@ -4,11 +4,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Droplets, Beaker, CheckCircle, XCircle, AlertTriangle, Check } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { convertQuantity } from "@shared/unitConversions";
-import type { ApplicationDay } from "@shared/schema";
+import type { ApplicationDay, InventoryAdjustment } from "@shared/schema";
 import MarkAsAppliedDialog, { AppliedBadge } from "./MarkAsAppliedDialog";
 import { useAuth } from "@/hooks/useAuth";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 interface InventoryItem {
   id: string;
@@ -38,16 +40,80 @@ export default function ProductCard({
 }: ProductCardProps) {
   const scaleFactor = lawnSize / 100; // Base calculations are per 100m²
   const { isAuthenticated } = useAuth();
+  const { toast } = useToast();
   
-  // UI state for mark as applied dialog (MOCK DATA for design preview)
+  // UI state for mark as applied dialog
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isApplied, setIsApplied] = useState(false); // Mock state - will be from API
-  const appliedDate = "Oct 19, 2025"; // Mock data
 
   // Fetch inventory data for authenticated user
   const { data: inventory = [] } = useQuery<InventoryItem[]>({
     queryKey: ["/api/inventory"],
     enabled: isAuthenticated,
+  });
+
+  // Fetch applied week status
+  interface AppliedWeek {
+    id: string;
+    userId: string;
+    weekNumber: number;
+    appliedAt: string;
+    adjustments: unknown;
+  }
+
+  const { data: appliedWeek } = useQuery<AppliedWeek | null>({
+    queryKey: ["/api/applied-weeks", weekNumber],
+    enabled: isAuthenticated,
+  });
+
+  const isApplied = !!appliedWeek;
+  const appliedDate = appliedWeek?.appliedAt 
+    ? new Date(appliedWeek.appliedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    : null;
+
+  // Mutation to mark week as applied
+  const markAsAppliedMutation = useMutation({
+    mutationFn: async (adjustments: InventoryAdjustment[]) => {
+      const res = await apiRequest("POST", "/api/applied-weeks", { weekNumber, adjustments });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/applied-weeks", weekNumber] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
+      toast({
+        title: "Week marked as applied",
+        description: `Week ${weekNumber} has been marked as applied and inventory updated.`
+      });
+      setIsDialogOpen(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to mark as applied",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Mutation to undo week application
+  const undoMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("DELETE", `/api/applied-weeks/${weekNumber}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/applied-weeks", weekNumber] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
+      toast({
+        title: "Application undone",
+        description: `Week ${weekNumber} has been unmarked and inventory restored.`
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to undo",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
   });
 
   // Helper function to get inventory status for a product
@@ -222,12 +288,9 @@ export default function ProductCard({
             {isApplied ? (
               <AppliedBadge
                 weekNumber={weekNumber}
-                appliedDate={appliedDate}
-                onUndo={() => {
-                  // Mock undo - will be API call
-                  setIsApplied(false);
-                }}
-                isUndoing={false}
+                appliedDate={appliedDate || ""}
+                onUndo={() => undoMutation.mutate()}
+                isUndoing={undoMutation.isPending}
               />
             ) : (
               <Button
@@ -249,7 +312,7 @@ export default function ProductCard({
           onClose={() => setIsDialogOpen(false)}
           weekNumber={weekNumber}
           adjustments={
-            // MOCK DATA - Calculate adjustments from applicationDays
+            // Calculate adjustments from applicationDays
             applicationDays.flatMap(day =>
               day.products.map(product => {
                 const scaledQuantity = Math.round(product.quantity * scaleFactor);
@@ -267,12 +330,19 @@ export default function ProductCard({
               })
             )
           }
-          onConfirm={() => {
-            // Mock confirm - will be API call
-            setIsApplied(true);
-            setIsDialogOpen(false);
+          onConfirm={(adjustments) => {
+            // Convert dialog adjustments to backend format
+            const backendAdjustments: InventoryAdjustment[] = adjustments.map(adj => ({
+              productName: adj.productName,
+              amountDeducted: adj.amountToDeduct,
+              unit: adj.unit,
+              previousQuantity: adj.currentInventory,
+              newQuantity: adj.newInventory
+            }));
+            
+            markAsAppliedMutation.mutate(backendAdjustments);
           }}
-          isPending={false}
+          isPending={markAsAppliedMutation.isPending}
         />
       </CardContent>
     </Card>
