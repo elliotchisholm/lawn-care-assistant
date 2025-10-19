@@ -96,3 +96,31 @@ export interface ApplicationDay {
   products: ApplicationProduct[];
   dayNotes: string | null;
 }
+
+// Applied weeks tracking - records when a user marks a week as applied
+export const appliedWeeks = pgTable("applied_weeks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  weekNumber: integer("week_number").notNull(),
+  appliedAt: timestamp("applied_at").defaultNow().notNull(),
+  adjustments: jsonb("adjustments").notNull(), // Array of {productName, amountDeducted, unit, previousQuantity, newQuantity}
+}, (table) => [
+  unique().on(table.userId, table.weekNumber)
+]);
+
+export const insertAppliedWeekSchema = createInsertSchema(appliedWeeks).omit({
+  id: true,
+  appliedAt: true
+});
+
+export type InsertAppliedWeek = z.infer<typeof insertAppliedWeekSchema>;
+export type AppliedWeek = typeof appliedWeeks.$inferSelect;
+
+// TypeScript type for adjustment records
+export interface InventoryAdjustment {
+  productName: string;
+  amountDeducted: number;
+  unit: string;
+  previousQuantity: number;
+  newQuantity: number;
+}
