@@ -1,10 +1,14 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Droplets, Beaker, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
+import { Droplets, Beaker, CheckCircle, XCircle, AlertTriangle, Check } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { convertQuantity } from "@shared/unitConversions";
 import type { ApplicationDay } from "@shared/schema";
+import MarkAsAppliedDialog, { AppliedBadge } from "./MarkAsAppliedDialog";
+import { useAuth } from "@/hooks/useAuth";
 
 interface InventoryItem {
   id: string;
@@ -20,19 +24,30 @@ interface InventoryItem {
 interface ProductCardProps {
   applicationDays: ApplicationDay[];
   lawnSize: number;
+  weekNumber: number;
+  isCurrentWeek: boolean;
   className?: string;
 }
 
 export default function ProductCard({ 
   applicationDays,
-  lawnSize, 
+  lawnSize,
+  weekNumber,
+  isCurrentWeek,
   className = ""
 }: ProductCardProps) {
   const scaleFactor = lawnSize / 100; // Base calculations are per 100m²
+  const { isAuthenticated } = useAuth();
+  
+  // UI state for mark as applied dialog (MOCK DATA for design preview)
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isApplied, setIsApplied] = useState(false); // Mock state - will be from API
+  const appliedDate = "Oct 19, 2025"; // Mock data
 
   // Fetch inventory data for authenticated user
   const { data: inventory = [] } = useQuery<InventoryItem[]>({
     queryKey: ["/api/inventory"],
+    enabled: isAuthenticated,
   });
 
   // Helper function to get inventory status for a product
@@ -198,6 +213,67 @@ export default function ProductCard({
             </div>
           ))}
         </div>
+
+        {/* Mark as Applied Section - Only for current week and authenticated users */}
+        {isCurrentWeek && isAuthenticated && (
+          <>
+            <Separator />
+            
+            {isApplied ? (
+              <AppliedBadge
+                weekNumber={weekNumber}
+                appliedDate={appliedDate}
+                onUndo={() => {
+                  // Mock undo - will be API call
+                  setIsApplied(false);
+                }}
+                isUndoing={false}
+              />
+            ) : (
+              <Button
+                onClick={() => setIsDialogOpen(true)}
+                className="w-full"
+                size="lg"
+                data-testid="button-mark-as-applied"
+              >
+                <Check className="h-5 w-5 mr-2" />
+                Mark Week {weekNumber} as Applied
+              </Button>
+            )}
+          </>
+        )}
+
+        {/* Mark as Applied Dialog */}
+        <MarkAsAppliedDialog
+          isOpen={isDialogOpen}
+          onClose={() => setIsDialogOpen(false)}
+          weekNumber={weekNumber}
+          adjustments={
+            // MOCK DATA - Calculate adjustments from applicationDays
+            applicationDays.flatMap(day =>
+              day.products.map(product => {
+                const scaledQuantity = Math.round(product.quantity * scaleFactor);
+                const inventoryStatus = getInventoryStatus(product.name, scaledQuantity, product.unit);
+                const newInventory = inventoryStatus.currentQuantity - scaledQuantity;
+                
+                return {
+                  productName: product.name,
+                  amountToDeduct: scaledQuantity,
+                  unit: product.unit,
+                  currentInventory: inventoryStatus.currentQuantity,
+                  newInventory: Math.max(0, newInventory),
+                  isInsufficient: newInventory < 0,
+                };
+              })
+            )
+          }
+          onConfirm={() => {
+            // Mock confirm - will be API call
+            setIsApplied(true);
+            setIsDialogOpen(false);
+          }}
+          isPending={false}
+        />
       </CardContent>
     </Card>
   );

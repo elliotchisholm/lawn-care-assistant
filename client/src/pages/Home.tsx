@@ -195,6 +195,8 @@ export default function Home() {
               <ProductCard
                 applicationDays={currentWeek.applicationDays as ApplicationDay[]}
                 lawnSize={lawnSize}
+                weekNumber={selectedWeek}
+                isCurrentWeek={selectedWeek === currentWeekNumber}
               />
             )}
             
