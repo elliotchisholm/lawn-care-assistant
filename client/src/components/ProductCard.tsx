@@ -62,7 +62,7 @@ export default function ProductCard({
   }
 
   const { data: appliedWeek } = useQuery<AppliedWeek | null>({
-    queryKey: ["/api/applied-weeks", weekNumber],
+    queryKey: ["/api/applied-weeks", weekNumber, user?.id],
     enabled: isAuthenticated,
   });
 
@@ -78,7 +78,7 @@ export default function ProductCard({
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/applied-weeks", weekNumber] });
+      queryClient.invalidateQueries({ queryKey: ["/api/applied-weeks", weekNumber, user?.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/inventory", user?.id] });
       toast({
         title: "Week marked as applied",
@@ -101,7 +101,7 @@ export default function ProductCard({
       await apiRequest("DELETE", `/api/applied-weeks/${weekNumber}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/applied-weeks", weekNumber] });
+      queryClient.invalidateQueries({ queryKey: ["/api/applied-weeks", weekNumber, user?.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/inventory", user?.id] });
       toast({
         title: "Application undone",
