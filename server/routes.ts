@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertInventorySchema, updateInventorySchema } from "@shared/schema";
+import { insertInventorySchema, updateInventorySchema, insertAppliedWeekSchema, type InventoryAdjustment } from "@shared/schema";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { z } from "zod";
 import { parsePackageSizes } from "./parsePackageSizes";
@@ -155,6 +155,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching inventory item:", error);
       res.status(500).json({ error: "Failed to fetch inventory item" });
+    }
+  });
+
+  // Applied weeks routes - tracking weekly applications
+  
+  // Check if a specific week is applied for authenticated user
+  app.get("/api/applied-weeks/:weekNumber", isAuthenticated, async (req: any, res) => {
+    try {
+      const weekNumber = parseInt(req.params.weekNumber);
+      if (isNaN(weekNumber) || weekNumber < 1 || weekNumber > 52) {
+        res.status(400).json({ error: "Invalid week number" });
+        return;
+      }
+      const userId = req.user.claims.sub;
+      const appliedWeek = await storage.getAppliedWeek(userId, weekNumber);
+      res.json(appliedWeek || null);
+    } catch (error) {
+      console.error("Error checking applied week:", error);
+      res.status(500).json({ error: "Failed to check applied week" });
+    }
+  });
+
+  // Mark a week as applied with inventory deductions
+  app.post("/api/applied-weeks", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const validatedData = insertAppliedWeekSchema.parse({ ...req.body, userId });
+      
+      // Validate adjustments structure
+      const adjustmentsSchema = z.array(z.object({
+        productName: z.string(),
+        amountDeducted: z.number(),
+        unit: z.string(),
+        previousQuantity: z.number(),
+        newQuantity: z.number()
+      }));
+      
+      const adjustments = adjustmentsSchema.parse(validatedData.adjustments);
+      
+      // Apply inventory deductions and create applied week record
+      const appliedWeek = await storage.markWeekAsApplied(
+        userId,
+        validatedData.weekNumber,
+        adjustments as InventoryAdjustment[]
+      );
+      
+      res.status(201).json(appliedWeek);
+    } catch (error) {
+      console.error("Error marking week as applied:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Invalid data", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Failed to mark week as applied" });
+      }
+    }
+  });
+
+  // Undo a week application (restore inventory)
+  app.delete("/api/applied-weeks/:weekNumber", isAuthenticated, async (req: any, res) => {
+    try {
+      const weekNumber = parseInt(req.params.weekNumber);
+      if (isNaN(weekNumber) || weekNumber < 1 || weekNumber > 52) {
+        res.status(400).json({ error: "Invalid week number" });
+        return;
+      }
+      const userId = req.user.claims.sub;
+      const deleted = await storage.undoWeekApplication(userId, weekNumber);
+      if (!deleted) {
+        res.status(404).json({ error: "Applied week not found" });
+        return;
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error undoing week application:", error);
+      res.status(500).json({ error: "Failed to undo week application" });
     }
   });
 

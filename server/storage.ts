@@ -1,4 +1,4 @@
-import { type User, type UpsertUser, type Inventory, type InsertInventory, type UpdateInventory, type WeeklySchedule, users, inventory, weeklySchedule } from "@shared/schema";
+import { type User, type UpsertUser, type Inventory, type InsertInventory, type UpdateInventory, type WeeklySchedule, type AppliedWeek, type InventoryAdjustment, users, inventory, weeklySchedule, appliedWeeks } from "@shared/schema";
 import { NZLA_PRODUCTS } from "@shared/products";
 import { randomUUID } from "crypto";
 import { db } from "./db";
@@ -25,6 +25,11 @@ export interface IStorage {
   getAllWeeklySchedule(): Promise<WeeklySchedule[]>;
   getWeeklyScheduleByWeek(weekNumber: number): Promise<WeeklySchedule | undefined>;
   getScheduleCount(): Promise<number>;
+  
+  // Applied weeks methods
+  getAppliedWeek(userId: string, weekNumber: number): Promise<AppliedWeek | undefined>;
+  markWeekAsApplied(userId: string, weekNumber: number, adjustments: InventoryAdjustment[]): Promise<AppliedWeek>;
+  undoWeekApplication(userId: string, weekNumber: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -136,6 +141,104 @@ export class DatabaseStorage implements IStorage {
   async getScheduleCount(): Promise<number> {
     const schedules = await db.select().from(weeklySchedule);
     return schedules.length;
+  }
+
+  // Applied weeks methods
+  async getAppliedWeek(userId: string, weekNumber: number): Promise<AppliedWeek | undefined> {
+    const [appliedWeek] = await db.select().from(appliedWeeks)
+      .where(and(
+        eq(appliedWeeks.userId, userId),
+        eq(appliedWeeks.weekNumber, weekNumber)
+      ));
+    return appliedWeek;
+  }
+
+  async markWeekAsApplied(userId: string, weekNumber: number, adjustments: InventoryAdjustment[]): Promise<AppliedWeek> {
+    // Apply inventory deductions - Store Zero logic: if inventory goes negative, set to 0
+    for (const adjustment of adjustments) {
+      const { productName, amountDeducted, unit } = adjustment;
+      
+      // Get current inventory item
+      const inventoryItem = await this.getInventoryItem(userId, productName);
+      
+      if (inventoryItem) {
+        // Calculate new quantity (Store Zero: floor at 0)
+        const currentQty = parseFloat(inventoryItem.currentQuantity);
+        const newQty = Math.max(0, currentQty - amountDeducted);
+        
+        // Update inventory
+        await db.update(inventory)
+          .set({ 
+            currentQuantity: newQty.toString(),
+            lastUpdated: new Date()
+          })
+          .where(and(
+            eq(inventory.userId, userId),
+            eq(inventory.productName, productName)
+          ));
+      } else {
+        // Create inventory item at 0 if it doesn't exist
+        await this.createInventoryItem({
+          userId,
+          productName,
+          currentQuantity: "0",
+          unit
+        });
+      }
+    }
+    
+    // Create applied week record
+    const [appliedWeek] = await db.insert(appliedWeeks)
+      .values({
+        userId,
+        weekNumber,
+        adjustments: adjustments as any
+      })
+      .onConflictDoUpdate({
+        target: [appliedWeeks.userId, appliedWeeks.weekNumber],
+        set: {
+          adjustments: adjustments as any,
+          appliedAt: new Date()
+        }
+      })
+      .returning();
+    
+    return appliedWeek;
+  }
+
+  async undoWeekApplication(userId: string, weekNumber: number): Promise<boolean> {
+    // Get the applied week to retrieve adjustments
+    const appliedWeek = await this.getAppliedWeek(userId, weekNumber);
+    
+    if (!appliedWeek) {
+      return false;
+    }
+    
+    // Restore inventory by adding back the deducted amounts
+    const adjustments = appliedWeek.adjustments as unknown as InventoryAdjustment[];
+    for (const adjustment of adjustments) {
+      const { productName, previousQuantity } = adjustment;
+      
+      // Restore to previous quantity
+      await db.update(inventory)
+        .set({ 
+          currentQuantity: previousQuantity.toString(),
+          lastUpdated: new Date()
+        })
+        .where(and(
+          eq(inventory.userId, userId),
+          eq(inventory.productName, productName)
+        ));
+    }
+    
+    // Delete the applied week record
+    const result = await db.delete(appliedWeeks)
+      .where(and(
+        eq(appliedWeeks.userId, userId),
+        eq(appliedWeeks.weekNumber, weekNumber)
+      ));
+    
+    return result.rowCount !== null && result.rowCount > 0;
   }
 }
 
