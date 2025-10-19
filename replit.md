@@ -16,6 +16,12 @@ Preferred communication style: Simple, everyday language.
 - **Framework**: React 18 with TypeScript, using Vite as the build tool
 - **Routing**: Wouter for lightweight client-side routing (single-page app with conditional rendering)
 - **State Management**: TanStack Query (React Query) for server state management
+  - **Custom QueryFn Pattern**: User-scoped queries require custom queryFn to prevent URL construction issues
+    - React Query's default queryFn joins ALL array elements with "/" to build URLs
+    - Cache keys like `["/api/inventory", user?.id]` would incorrectly construct `/api/inventory/123`
+    - Solution: Custom queryFn constructs correct URL while maintaining user ID in cache key for scoping
+    - Applied in: ProductCard (inventory + applied-weeks), InventoryManager (inventory), PurchaseRecommendations (inventory)
+    - Pattern: `queryFn: async () => { const res = await fetch("/api/endpoint", { credentials: "include" }); ... }`
 - **UI Components**: shadcn/ui component library built on Radix UI primitives
 - **Styling**: Tailwind CSS with custom design tokens and utility-first approach
 - **Form Handling**: React Hook Form with Zod validation
