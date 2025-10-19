@@ -155,6 +155,9 @@ export class DatabaseStorage implements IStorage {
 
   async markWeekAsApplied(userId: string, weekNumber: number, adjustments: InventoryAdjustment[]): Promise<AppliedWeek> {
     // Apply inventory deductions - Store Zero logic: if inventory goes negative, set to 0
+    // Create corrected adjustments with actual inventory values (not converted)
+    const correctedAdjustments: InventoryAdjustment[] = [];
+    
     for (const adjustment of adjustments) {
       const { productName, amountDeducted, unit } = adjustment;
       
@@ -162,9 +165,22 @@ export class DatabaseStorage implements IStorage {
       const inventoryItem = await this.getInventoryItem(userId, productName);
       
       if (inventoryItem) {
-        // Calculate new quantity (Store Zero: floor at 0)
-        const currentQty = parseFloat(inventoryItem.currentQuantity);
-        const newQty = Math.max(0, currentQty - amountDeducted);
+        // Store the ACTUAL inventory values before any modifications
+        const actualPreviousQty = parseFloat(inventoryItem.currentQuantity);
+        const actualUnit = inventoryItem.unit;
+        
+        // Convert amountDeducted to inventory's unit for calculation
+        const convertedAmount = this.convertQuantity(amountDeducted, unit, actualUnit);
+        const newQty = Math.max(0, actualPreviousQty - convertedAmount);
+        
+        // Store the corrected adjustment with actual inventory unit
+        correctedAdjustments.push({
+          productName,
+          amountDeducted: convertedAmount,
+          unit: actualUnit,  // Use actual inventory unit
+          previousQuantity: actualPreviousQty,  // Use actual previous quantity
+          newQuantity: newQty
+        });
         
         // Update inventory
         await db.update(inventory)
@@ -184,26 +200,54 @@ export class DatabaseStorage implements IStorage {
           currentQuantity: "0",
           unit
         });
+        
+        correctedAdjustments.push({
+          productName,
+          amountDeducted,
+          unit,
+          previousQuantity: 0,
+          newQuantity: 0
+        });
       }
     }
     
-    // Create applied week record
+    // Create applied week record with corrected adjustments
     const [appliedWeek] = await db.insert(appliedWeeks)
       .values({
         userId,
         weekNumber,
-        adjustments: adjustments as any
+        adjustments: correctedAdjustments as any
       })
       .onConflictDoUpdate({
         target: [appliedWeeks.userId, appliedWeeks.weekNumber],
         set: {
-          adjustments: adjustments as any,
+          adjustments: correctedAdjustments as any,
           appliedAt: new Date()
         }
       })
       .returning();
     
     return appliedWeek;
+  }
+
+  // Helper method to convert between units
+  private convertQuantity(amount: number, fromUnit: string, toUnit: string): number {
+    // Normalize units to lowercase
+    const from = fromUnit.toLowerCase();
+    const to = toUnit.toLowerCase();
+    
+    if (from === to) return amount;
+    
+    // Weight conversions (g <-> kg)
+    if (from === 'g' && to === 'kg') return amount / 1000;
+    if (from === 'kg' && to === 'g') return amount * 1000;
+    
+    // Volume conversions (ml <-> l)
+    if (from === 'ml' && to === 'l') return amount / 1000;
+    if (from === 'l' && to === 'ml') return amount * 1000;
+    
+    // If no conversion found, return original amount
+    return amount;
   }
 
   async undoWeekApplication(userId: string, weekNumber: number): Promise<boolean> {
