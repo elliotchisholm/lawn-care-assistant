@@ -9,6 +9,7 @@ import { Slider } from "@/components/ui/slider";
 import { convertQuantity } from "@shared/unitConversions";
 import type { WeeklySchedule } from "@shared/schema";
 import { calculatePackagePurchase, formatPackageRecommendation, type PackageSize } from "@/lib/packageCalculator";
+import { useAuth } from "@/hooks/useAuth";
 
 interface InventoryItem {
   id: string;
@@ -39,10 +40,11 @@ interface PurchaseRecommendationsProps {
 export default function PurchaseRecommendations({ lawnSize }: PurchaseRecommendationsProps) {
   const scaleFactor = lawnSize / 100; // Base calculations are per 100m²
   const [weeksToAnalyze, setWeeksToAnalyze] = useState(8); // Default 8 weeks, min 1, max 52
+  const { user } = useAuth();
   
-  // Fetch inventory data for authenticated user
+  // Fetch inventory data for authenticated user (user-scoped to prevent cache staleness)
   const { data: inventory = [] } = useQuery<InventoryItem[]>({
-    queryKey: ["/api/inventory"],
+    queryKey: ["/api/inventory", user?.id],
   });
 
   // Fetch full schedule from API

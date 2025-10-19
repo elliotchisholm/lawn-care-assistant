@@ -34,6 +34,7 @@ import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { NZLA_PRODUCTS } from "@shared/products";
+import { useAuth } from "@/hooks/useAuth";
 
 
 // Form validation schemas
@@ -72,6 +73,7 @@ interface InventoryFormProps {
 
 function InventoryForm({ item, open, onOpenChange }: InventoryFormProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const form = useForm<InventoryFormData>({
     resolver: zodResolver(inventoryFormSchema),
     defaultValues: {
@@ -140,7 +142,7 @@ function InventoryForm({ item, open, onOpenChange }: InventoryFormProps) {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory", user?.id] });
       toast({ 
         title: "Success", 
         description: "Inventory item added successfully",
@@ -194,7 +196,7 @@ function InventoryForm({ item, open, onOpenChange }: InventoryFormProps) {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory", user?.id] });
       toast({ 
         title: "Success", 
         description: "Inventory item updated successfully",
@@ -346,10 +348,11 @@ export default function InventoryManager() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | undefined>();
   const { toast } = useToast();
+  const { user } = useAuth();
 
-  // Fetch inventory data
+  // Fetch inventory data (user-scoped to prevent cache staleness)
   const { data: inventory = [], isLoading } = useQuery<InventoryItem[]>({
-    queryKey: ["/api/inventory"],
+    queryKey: ["/api/inventory", user?.id],
     queryFn: async (): Promise<InventoryItem[]> => {
       const response = await fetch(`/api/inventory`);
       if (!response.ok) throw new Error("Failed to fetch inventory");
@@ -370,7 +373,7 @@ export default function InventoryManager() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory", user?.id] });
       toast({ 
         title: "Success", 
         description: "Inventory item deleted successfully",
