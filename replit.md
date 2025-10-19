@@ -34,6 +34,7 @@ Preferred communication style: Simple, everyday language.
   - Users table for authentication and user management
   - Inventory table for tracking product stocks and quantities with unique constraint per user per product
   - Weekly Schedule table containing all 52 weeks of NZLA application guide data with per-product types
+  - Applied Weeks table for tracking completed applications with inventory adjustments (supports undo)
   - Shared schema with Zod validation integration
 - **Product Name Standardization**: Canonical product naming system ensures consistency
   - Single source of truth: `shared/canonicalProductNames.ts` defines all 17 official NZLA products
@@ -49,6 +50,9 @@ Preferred communication style: Simple, everyday language.
 - **Feature Protection**: Conditional rendering shows locked previews for unauthenticated users, unlocks full features after sign-in
 - **Data Isolation**: User-scoped inventory and recommendation data
 - **Security**: Query guards prevent protected API calls from executing for unauthenticated users
+- **Cache Security**: All React Query cache keys include user ID to prevent cross-user data leakage
+  - Inventory queries: `["/api/inventory", user?.id]`
+  - Applied week queries: `["/api/applied-weeks", weekNumber, user?.id]`
 
 ### Design System and Theming
 - **Color Palette**: Nature-focused green theme with light/dark mode support
@@ -92,6 +96,15 @@ Preferred communication style: Simple, everyday language.
   - Unit conversions between kg↔g and L↔ml
 - **Purchase Recommendations** (Protected): Intelligent suggestions based on upcoming applications and current inventory
 - **Application Timeline**: Visual weekly schedule with progress indicators and current week highlighting
+- **Mark as Applied** (Protected): Track completed lawn care applications with automatic inventory adjustment
+  - Allows users to mark the current week's applications as completed
+  - Automatically deducts product quantities from inventory based on lawn size
+  - Shows preview dialog with before/after inventory changes
+  - Handles insufficient inventory with explicit user confirmation (sets inventory to 0)
+  - Supports undo functionality to restore inventory with correct unit conversions
+  - Stores application history with adjustments in database (applied_weeks table)
+  - User-scoped cache keys prevent cross-user data leakage
+  - Product name normalization ensures accurate inventory matching
 
 ### User Experience Enhancements
 - **Loading States**: Skeleton screens provide visual feedback during data fetching
