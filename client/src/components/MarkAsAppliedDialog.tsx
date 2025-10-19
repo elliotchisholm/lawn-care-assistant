@@ -74,7 +74,7 @@ export default function MarkAsAppliedDialog({
                 className={`border rounded-lg p-3 ${
                   adj.isInsufficient ? 'border-destructive bg-destructive/5' : 'border-border'
                 }`}
-                data-testid={`adjustment-${adj.productName.replace(/\s+/g, '-').toLowerCase()}`}
+                data-testid={`adjustment-${adj.productName?.replace(/\s+/g, '-').toLowerCase() || 'product'}`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1">
