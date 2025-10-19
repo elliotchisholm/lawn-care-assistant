@@ -6,6 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { Droplets, Beaker, CheckCircle, XCircle, AlertTriangle, Check } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { convertQuantity } from "@shared/unitConversions";
+import { normalizeProductName } from "@shared/canonicalProductNames";
 import type { ApplicationDay, InventoryAdjustment } from "@shared/schema";
 import MarkAsAppliedDialog, { AppliedBadge } from "./MarkAsAppliedDialog";
 import { useAuth } from "@/hooks/useAuth";
@@ -39,15 +40,15 @@ export default function ProductCard({
   className = ""
 }: ProductCardProps) {
   const scaleFactor = lawnSize / 100; // Base calculations are per 100m²
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const { toast } = useToast();
   
   // UI state for mark as applied dialog
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  // Fetch inventory data for authenticated user
+  // Fetch inventory data for authenticated user (keyed by user ID to prevent cache staleness)
   const { data: inventory = [] } = useQuery<InventoryItem[]>({
-    queryKey: ["/api/inventory"],
+    queryKey: ["/api/inventory", user?.id],
     enabled: isAuthenticated,
   });
 
@@ -78,7 +79,7 @@ export default function ProductCard({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/applied-weeks", weekNumber] });
-      queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory", user?.id] });
       toast({
         title: "Week marked as applied",
         description: `Week ${weekNumber} has been marked as applied and inventory updated.`
@@ -101,7 +102,7 @@ export default function ProductCard({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/applied-weeks", weekNumber] });
-      queryClient.invalidateQueries({ queryKey: ["/api/inventory"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inventory", user?.id] });
       toast({
         title: "Application undone",
         description: `Week ${weekNumber} has been unmarked and inventory restored.`
@@ -118,8 +119,9 @@ export default function ProductCard({
 
   // Helper function to get inventory status for a product
   const getInventoryStatus = (productName: string, requiredQuantity: number, unit: string) => {
+    const normalizedProductName = normalizeProductName(productName);
     const inventoryItems = inventory.filter(item => 
-      item.productName === productName
+      normalizeProductName(item.productName) === normalizedProductName
     );
     
     if (inventoryItems.length === 0) {
