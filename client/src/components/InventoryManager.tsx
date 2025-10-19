@@ -354,7 +354,9 @@ export default function InventoryManager() {
   const { data: inventory = [], isLoading } = useQuery<InventoryItem[]>({
     queryKey: ["/api/inventory", user?.id],
     queryFn: async (): Promise<InventoryItem[]> => {
-      const response = await fetch(`/api/inventory`);
+      const response = await fetch("/api/inventory", {
+        credentials: "include",
+      });
       if (!response.ok) throw new Error("Failed to fetch inventory");
       return response.json();
     },
