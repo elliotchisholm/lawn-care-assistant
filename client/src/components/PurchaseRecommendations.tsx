@@ -45,6 +45,15 @@ export default function PurchaseRecommendations({ lawnSize }: PurchaseRecommenda
   // Fetch inventory data for authenticated user (user-scoped to prevent cache staleness)
   const { data: inventory = [] } = useQuery<InventoryItem[]>({
     queryKey: ["/api/inventory", user?.id],
+    queryFn: async () => {
+      const res = await fetch("/api/inventory", {
+        credentials: "include",
+      });
+      if (!res.ok) {
+        throw new Error(`Failed to fetch inventory: ${res.statusText}`);
+      }
+      return res.json();
+    },
   });
 
   // Fetch full schedule from API
