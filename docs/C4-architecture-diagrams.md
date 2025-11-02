@@ -30,11 +30,11 @@ graph TB
     User[("👤 Lawn Care User")]
     
     subgraph LawnCareSystem["🌿 Lawn Care Application"]
-        WebApp["📱 Web Application<br/>(React + TypeScript)<br/>---<br/>• Responsive UI with Tailwind CSS<br/>• Week selector (1-52)<br/>• Real-time calculations<br/>• Dark mode support"]
+        WebApp["📱 Web Application<br/>(React + TypeScript)<br/>---<br/>• Single-page app (SPA)<br/>• Week selector (1-52)<br/>• Real-time calculations<br/>• Dark mode support<br/>• Custom React Query pattern"]
         
-        API["⚙️ API Server<br/>(Express + TypeScript)<br/>---<br/>• RESTful endpoints<br/>• Session management<br/>• Initialization gating<br/>• Background seeding"]
+        API["⚙️ API Server<br/>(Express + TypeScript)<br/>---<br/>• RESTful endpoints<br/>• Session management<br/>• Product name normalization<br/>• Background seeding<br/>• Unit conversion support"]
         
-        DB[("💾 PostgreSQL Database<br/>(Neon Serverless)<br/>---<br/>• Users & Sessions<br/>• Weekly Schedule (52 weeks)<br/>• Product Inventory<br/>• Application tracking")]
+        DB[("💾 PostgreSQL Database<br/>(Neon Serverless)<br/>---<br/>• Users & Sessions<br/>• Weekly Schedule (52 weeks)<br/>• Product Inventory<br/>• Applied Weeks (with undo)")]
     end
     
     ReplitAuth["🔐 Replit Auth Service<br/>(OIDC Provider)<br/>---<br/>Google SSO authentication"]
@@ -42,7 +42,7 @@ graph TB
     NZLA["📚 NZLA Website<br/>---<br/>Content reference only"]
     
     User -->|"HTTPS<br/>(Port 5000)"| WebApp
-    WebApp -->|"API Requests<br/>(JSON/REST)"| API
+    WebApp -->|"API Requests<br/>(JSON/REST)<br/>Custom queryFn"| API
     API -->|"SQL Queries<br/>(Drizzle ORM)"| DB
     API -->|"OAuth 2.0<br/>OIDC Flow"| ReplitAuth
     WebApp -.->|"Attribution link<br/>(reference only)"| NZLA
@@ -56,9 +56,9 @@ graph TB
 ```
 
 **Description**: Shows the high-level technical containers that make up the application:
-- **Web Application**: React-based SPA with Vite, handles all UI and user interactions
-- **API Server**: Express backend managing business logic, authentication, and data persistence
-- **PostgreSQL Database**: Stores users, weekly schedules, and inventory data
+- **Web Application**: React-based SPA with Vite, handles all UI and user interactions with custom React Query pattern for user-scoped caching
+- **API Server**: Express backend managing business logic, authentication, data persistence, and product name normalization
+- **PostgreSQL Database**: Stores users, weekly schedules, inventory data, and applied weeks with undo support
 - **Replit Auth**: External OAuth provider for secure Google SSO
 
 ---
@@ -70,17 +70,19 @@ graph TB
     WebApp["📱 Web Application"]
     
     subgraph APIServer["⚙️ API Server (Express)"]
-        Routes["🛣️ Route Handlers<br/>---<br/>• /api/schedule/:week<br/>• /api/lawn-size<br/>• /api/inventory<br/>• /api/user"]
+        Routes["🛣️ Route Handlers<br/>---<br/>• /api/schedule/:week<br/>• /api/lawn-size<br/>• /api/inventory<br/>• /api/applied-weeks/:week<br/>• /api/user"]
         
         AuthMW["🔒 Auth Middleware<br/>---<br/>• Session validation<br/>• Protected routes<br/>• User context"]
         
         InitMW["⏳ Initialization Middleware<br/>---<br/>• Checks isInitialized flag<br/>• Returns 503 if not ready<br/>• Gates schedule endpoints"]
         
-        Storage["📦 Storage Interface<br/>---<br/>• IStorage abstraction<br/>• CRUD operations<br/>• Type-safe methods"]
+        ProductNorm["🏷️ Product Name Normalizer<br/>---<br/>• Canonical name mapping<br/>• Case-insensitive matching<br/>• NZLA prefix handling"]
+        
+        Storage["📦 Storage Interface<br/>---<br/>• IStorage abstraction<br/>• CRUD operations<br/>• Type-safe methods<br/>• Unit conversion support"]
         
         Startup["🚀 Startup Module<br/>---<br/>• Background initialization<br/>• Async seeding orchestration<br/>• Error handling"]
         
-        Seeder["🌱 Schedule Seeder<br/>---<br/>• Parses NZLA guide data<br/>• Upsert operations (idempotent)<br/>• All 52 weeks pre-loaded"]
+        Seeder["🌱 Schedule Seeder<br/>---<br/>• Parses NZLA guide data<br/>• Upsert operations (idempotent)<br/>• All 52 weeks pre-loaded<br/>• Per-product type support"]
         
         ORM["🗃️ Drizzle ORM<br/>---<br/>• Type-safe queries<br/>• Schema validation<br/>• Migration management"]
     end
@@ -91,8 +93,10 @@ graph TB
     WebApp -->|"HTTP Requests"| Routes
     Routes --> AuthMW
     Routes --> InitMW
+    Routes --> ProductNorm
     AuthMW --> Storage
     InitMW --> Storage
+    ProductNorm --> Storage
     Routes --> Storage
     Storage --> ORM
     ORM --> DB
@@ -103,6 +107,7 @@ graph TB
     style Routes fill:#3b82f6,stroke:#2563eb,stroke-width:2px,color:#fff
     style AuthMW fill:#8b5cf6,stroke:#7c3aed,stroke-width:2px,color:#fff
     style InitMW fill:#ec4899,stroke:#db2777,stroke-width:2px,color:#fff
+    style ProductNorm fill:#06b6d4,stroke:#0891b2,stroke-width:2px,color:#fff
     style Storage fill:#10b981,stroke:#059669,stroke-width:2px,color:#fff
     style Startup fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#fff
     style Seeder fill:#14b8a6,stroke:#0d9488,stroke-width:2px,color:#fff
@@ -111,12 +116,13 @@ graph TB
 ```
 
 **Description**: Shows the internal components of the API Server:
-- **Route Handlers**: Define API endpoints for schedule, lawn size, inventory, and user data
+- **Route Handlers**: Define API endpoints for schedule, lawn size, inventory, applied weeks, and user data
 - **Auth Middleware**: Validates sessions and protects authenticated routes
 - **Initialization Middleware**: Prevents race conditions by gating schedule requests until seeding completes
-- **Storage Interface**: Abstraction layer for all database operations
+- **Product Name Normalizer**: Ensures consistent product naming across all operations
+- **Storage Interface**: Abstraction layer for all database operations with unit conversion support
 - **Startup Module**: Orchestrates background initialization after server starts
-- **Schedule Seeder**: Pre-loads all 52 weeks of NZLA application data
+- **Schedule Seeder**: Pre-loads all 52 weeks of NZLA application data with per-product types
 - **Drizzle ORM**: Type-safe database access layer
 
 ---
@@ -128,26 +134,26 @@ graph TB
     User[("👤 User")]
     
     subgraph WebApp["📱 Web Application (React)"]
-        Pages["📄 Pages<br/>---<br/>• Home (public)<br/>• Dashboard (protected)"]
+        Pages["📄 Single-Page App<br/>---<br/>• Conditional rendering<br/>• Public & protected features<br/>• Unified experience"]
         
-        Components["🧩 Components<br/>---<br/>• Header & Navigation<br/>• Week Selector<br/>• Lawn Size Calculator<br/>• Product Cards<br/>• Inventory Manager"]
+        Components["🧩 Components<br/>---<br/>• Header & Theme Toggle<br/>• Week Selector (1-52)<br/>• Lawn Size Calculator<br/>• Product Cards<br/>• Inventory Manager<br/>• Purchase Recommendations<br/>• Mark as Applied Dialog"]
         
-        Auth["🔐 Auth Hook<br/>---<br/>• useAuth()<br/>• Session state<br/>• Route protection"]
+        Auth["🔐 Auth Hook<br/>---<br/>• useAuth()<br/>• Session state<br/>• Feature unlocking"]
         
-        Query["📡 React Query<br/>---<br/>• Data fetching<br/>• Cache management<br/>• Optimistic updates"]
+        Query["📡 React Query<br/>---<br/>• Custom queryFn pattern<br/>• User-scoped caching<br/>• Cache invalidation<br/>• Optimistic updates"]
         
-        Router["🧭 Wouter Router<br/>---<br/>• Client-side routing<br/>• Protected routes<br/>• Navigation"]
+        UnitConv["🔢 Unit Conversions<br/>---<br/>• kg ↔ g<br/>• L ↔ ml<br/>• Display formatting"]
         
-        UI["🎨 UI Components<br/>---<br/>• shadcn/ui primitives<br/>• Tailwind styling<br/>• Dark mode support"]
+        UI["🎨 UI Components<br/>---<br/>• shadcn/ui primitives<br/>• Tailwind styling<br/>• Dark mode support<br/>• Loading states"]
     end
     
     API["⚙️ API Server"]
     
     User --> Pages
     Pages --> Components
-    Pages --> Router
     Components --> Auth
     Components --> Query
+    Components --> UnitConv
     Components --> UI
     Query --> API
     Auth --> API
@@ -156,18 +162,18 @@ graph TB
     style Components fill:#10b981,stroke:#059669,stroke-width:2px,color:#fff
     style Auth fill:#8b5cf6,stroke:#7c3aed,stroke-width:2px,color:#fff
     style Query fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#fff
-    style Router fill:#ec4899,stroke:#db2777,stroke-width:2px,color:#fff
+    style UnitConv fill:#06b6d4,stroke:#0891b2,stroke-width:2px,color:#fff
     style UI fill:#14b8a6,stroke:#0d9488,stroke-width:2px,color:#fff
     style WebApp fill:#f3f4f6,stroke:#3b82f6,stroke-width:3px
 ```
 
 **Description**: Shows the internal structure of the React Web Application:
-- **Pages**: Home (public) and Dashboard (protected) route components
-- **Components**: Reusable UI elements for lawn care features
-- **Auth Hook**: Manages authentication state and route protection
-- **React Query**: Handles server state synchronization and caching
-- **Wouter Router**: Lightweight client-side routing
-- **UI Components**: shadcn/ui component library with Tailwind CSS
+- **Single-Page App**: Unified page with conditional rendering for public/protected features
+- **Components**: Comprehensive lawn care feature components including inventory and application tracking
+- **Auth Hook**: Manages authentication state and feature unlocking
+- **React Query**: Custom queryFn pattern for user-scoped caching and cache invalidation
+- **Unit Conversions**: Bidirectional conversions between metric units
+- **UI Components**: shadcn/ui component library with Tailwind CSS and dark mode
 
 ---
 
@@ -214,35 +220,169 @@ sequenceDiagram
 
 ---
 
+## Data Flow Diagram - Mark as Applied with Inventory Adjustment
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant WebApp as Web Application
+    participant ProductCard as Product Card
+    participant Dialog as Mark as Applied Dialog
+    participant Query as React Query
+    participant API as API Server
+    participant DB as PostgreSQL
+    
+    Note over User,DB: User Marks Week 42 as Applied
+    User->>ProductCard: Click "Mark Week 42 as Applied"
+    ProductCard->>Query: Check inventory (custom queryFn)
+    Query->>API: GET /api/inventory
+    API->>DB: Query user inventory
+    DB-->>API: Return inventory items
+    API-->>Query: Inventory data
+    Query-->>ProductCard: Cached inventory
+    ProductCard->>Dialog: Open with inventory preview
+    Dialog-->>User: Show before/after amounts
+    
+    Note over User,Dialog: User Confirms Application
+    User->>Dialog: Click "Mark as Applied"
+    Dialog->>Query: Mutation: Mark as applied
+    Query->>API: POST /api/applied-weeks/42
+    API->>API: Normalize product names
+    API->>DB: Begin transaction
+    API->>DB: Insert applied_weeks record
+    API->>DB: Adjust inventory (-2kg, -200ml, -50ml)
+    API->>DB: Store original amounts for undo
+    DB-->>API: Transaction complete
+    API-->>Query: Success response
+    Query->>Query: Invalidate inventory cache
+    Query->>Query: Invalidate applied-weeks cache
+    Query-->>Dialog: Mutation success
+    Dialog-->>ProductCard: Close dialog
+    ProductCard->>ProductCard: Show "Week 42 Applied" badge
+    ProductCard->>ProductCard: Show undo button
+    ProductCard-->>User: Updated UI (2kg, 300ml, 50ml)
+    
+    Note over User,DB: User Undoes Application
+    User->>ProductCard: Click undo button
+    ProductCard->>Query: Mutation: Undo application
+    Query->>API: DELETE /api/applied-weeks/42
+    API->>DB: Begin transaction
+    API->>DB: Delete applied_weeks record
+    API->>DB: Restore original inventory (4kg, 500ml, 100ml)
+    DB-->>API: Transaction complete
+    API-->>Query: Success response
+    Query->>Query: Invalidate caches
+    Query-->>ProductCard: Mutation success
+    ProductCard->>ProductCard: Hide badge, show button
+    ProductCard-->>User: Restored UI (4kg, 500ml, 100ml)
+```
+
+**Description**: Shows the complete flow of marking a week as applied, including inventory adjustment with undo support. Highlights the custom queryFn pattern, cache invalidation, and transactional database operations.
+
+---
+
+## Data Flow Diagram - React Query Custom QueryFn Pattern
+
+```mermaid
+sequenceDiagram
+    participant Component as ProductCard/InventoryManager
+    participant Query as React Query
+    participant DefaultFn as Default QueryFn
+    participant CustomFn as Custom QueryFn
+    participant API as API Server
+    
+    Note over Component,API: ❌ Problem: Default QueryFn (WRONG)
+    Component->>Query: useQuery({ queryKey: ["/api/inventory", userId] })
+    Query->>DefaultFn: Join array elements with "/"
+    DefaultFn->>DefaultFn: URL = "/api/inventory/abc123"
+    DefaultFn->>API: GET /api/inventory/abc123
+    API-->>DefaultFn: 404 Not Found ❌
+    
+    Note over Component,API: ✅ Solution: Custom QueryFn (CORRECT)
+    Component->>Query: useQuery({<br/>  queryKey: ["/api/inventory", userId],<br/>  queryFn: async () => fetch("/api/inventory")
+    Query->>CustomFn: Call custom queryFn
+    CustomFn->>CustomFn: URL = "/api/inventory" (hardcoded)
+    CustomFn->>API: GET /api/inventory (with credentials)
+    API->>API: Extract userId from session
+    API-->>CustomFn: 200 OK with user inventory ✅
+    CustomFn-->>Query: Return data
+    Query->>Query: Cache with key ["/api/inventory", userId]
+    Query-->>Component: Cached data (user-scoped)
+```
+
+**Description**: Illustrates the critical React Query custom queryFn pattern that fixes URL construction issues while maintaining user-scoped cache keys for security and proper cache invalidation.
+
+---
+
 ## Key Architectural Decisions
 
-### 1. **Tiered Access Model**
-- **Public**: Home page with basic calculator (local state)
-- **Protected**: Dashboard with persistent storage and inventory
+### 1. **Single-Page Application with Conditional Rendering**
+- All features on one page (/)
+- Public features: Week selector, lawn size calculator (local state), product recommendations
+- Protected features: Inventory management, purchase recommendations, mark as applied
+- Features unlock seamlessly after authentication
+- No page navigation required
 
-### 2. **Race Condition Prevention**
+### 2. **Custom React Query Pattern for User-Scoped Caching**
+- **Problem**: Default queryFn joins ALL cache key array elements with "/" to build URLs
+- **Impact**: `["/api/inventory", userId]` → `/api/inventory/123` (404 error)
+- **Solution**: Custom queryFn explicitly constructs correct URL while keeping userId in cache key
+- **Applied in**: ProductCard (inventory + applied-weeks), InventoryManager, PurchaseRecommendations
+- **Security**: User ID in cache key prevents cross-user data leakage
+- **Pattern**: `queryFn: async () => fetch("/api/endpoint", { credentials: "include" })`
+
+### 3. **Product Name Normalization**
+- Canonical product names defined in `shared/canonicalProductNames.ts`
+- Normalization handles: case-insensitivity, "NZLA" prefix variations, "Plus" vs "+"
+- Applied across: inventory operations, weekly applications, purchase recommendations
+- Database migration script ensures historical data consistency
+- One inventory entry per product per user (database constraint)
+
+### 4. **Mark as Applied with Undo Support**
+- Transactional inventory adjustments (kg↔g, L↔ml conversions)
+- Stores original inventory amounts for accurate undo restoration
+- "Store zero" design: insufficient inventory sets to 0 (not negative)
+- Conditional rendering: button replaced by badge when applied
+- Cache invalidation ensures immediate UI updates across all components
+
+### 5. **Race Condition Prevention**
 - Server starts immediately (passes health checks)
 - Schedule seeding runs in background
 - Middleware gates schedule endpoints with 503 until ready
 - Prevents serving empty data during deployment
-
-### 3. **Data Pre-seeding**
-- All 52 weeks loaded at startup
 - Idempotent upsert operations (safe restarts)
-- Database-driven scheduler (not hardcoded)
 
-### 4. **Authentication Strategy**
+### 6. **Authentication Strategy**
 - Replit Auth (OIDC) for Google SSO
 - Server-side sessions in PostgreSQL
-- Client-side route guards
+- Session-based user identification (not client-provided IDs)
+- Client-side feature unlocking (no route redirects)
+- All protected routes validate session server-side
 
-### 5. **Frontend Architecture**
-- React Query for server state
-- Local state for public features
-- Optimistic updates for inventory
+### 7. **Unit Conversion System**
+- Bidirectional conversions: kg↔g, L↔ml
+- Display formatting for user-friendly units
+- Backend stores user's original units
+- Consistent conversion logic shared across frontend/backend
+- Preserves precision during undo operations
 
-### 6. **Scalability Considerations**
+### 8. **Cache Security and Invalidation**
+- All user-scoped queries include user ID in cache key
+- Prevents cross-user data leakage
+- Invalidation after mutations: inventory, applied weeks
+- Optimistic updates for responsive UX
+- Custom queryFn maintains security while fixing URL construction
+
+### 9. **Database Schema Design**
+- Weekly Schedule: 52 weeks pre-seeded with per-product types
+- Inventory: Unique constraint per user per product
+- Applied Weeks: Stores week number, user ID, and adjustment details for undo
+- Canonical product names ensure referential integrity
+- PostgreSQL constraints prevent duplicate applications
+
+### 10. **Scalability Considerations**
 - Serverless PostgreSQL (Neon)
-- Stateless API server
-- Client-side caching
-- Background initialization
+- Stateless API server (session store in DB)
+- Client-side caching with React Query
+- Background initialization doesn't block startup
+- User-scoped data isolation for horizontal scaling
