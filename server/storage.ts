@@ -1,8 +1,8 @@
-import { type User, type UpsertUser, type Inventory, type InsertInventory, type UpdateInventory, type WeeklySchedule, type AppliedWeek, type InventoryAdjustment, users, inventory, weeklySchedule, appliedWeeks } from "@shared/schema";
+import { type User, type UpsertUser, type Inventory, type InsertInventory, type UpdateInventory, type WeeklySchedule, type AppliedWeek, type InventoryAdjustment, users, inventory, weeklySchedule, appliedWeeks, systemMetrics } from "@shared/schema";
 import { NZLA_PRODUCTS } from "@shared/products";
 import { randomUUID } from "crypto";
 import { db } from "./db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, count, sql } from "drizzle-orm";
 
 // modify the interface with any CRUD methods
 // you might need
@@ -30,6 +30,16 @@ export interface IStorage {
   getAppliedWeek(userId: string, weekNumber: number): Promise<AppliedWeek | undefined>;
   markWeekAsApplied(userId: string, weekNumber: number, adjustments: InventoryAdjustment[]): Promise<AppliedWeek>;
   undoWeekApplication(userId: string, weekNumber: number): Promise<boolean>;
+  
+  // Metrics methods
+  getTotalUsers(): Promise<number>;
+  getTotalInventoryItems(): Promise<number>;
+  getTotalApplicationsMarked(): Promise<number>;
+  getTotalUndoOperations(): Promise<number>;
+  getAverageLawnSize(): Promise<number>;
+  
+  // Internal metrics tracking
+  incrementMetric(metricKey: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -282,7 +292,62 @@ export class DatabaseStorage implements IStorage {
         eq(appliedWeeks.weekNumber, weekNumber)
       ));
     
-    return result.rowCount !== null && result.rowCount > 0;
+    const success = result.rowCount !== null && result.rowCount > 0;
+    
+    // Track undo operation for observability metrics
+    if (success) {
+      await this.incrementMetric('total_undo_operations');
+    }
+    
+    return success;
+  }
+  
+  // Metrics methods - using efficient COUNT queries
+  async getTotalUsers(): Promise<number> {
+    const result = await db.select({ count: count() }).from(users);
+    return Number(result[0]?.count) || 0;
+  }
+  
+  async getTotalInventoryItems(): Promise<number> {
+    const result = await db.select({ count: count() }).from(inventory);
+    return Number(result[0]?.count) || 0;
+  }
+  
+  async getTotalApplicationsMarked(): Promise<number> {
+    const result = await db.select({ count: count() }).from(appliedWeeks);
+    return Number(result[0]?.count) || 0;
+  }
+  
+  async getTotalUndoOperations(): Promise<number> {
+    const [metric] = await db.select()
+      .from(systemMetrics)
+      .where(eq(systemMetrics.metricKey, 'total_undo_operations'));
+    return metric?.metricValue || 0;
+  }
+  
+  async getAverageLawnSize(): Promise<number> {
+    // Note: Average requires fetching data since we need to filter null/zero values
+    const allUsers = await db.select({ lawnSize: users.lawnSize }).from(users);
+    if (allUsers.length === 0) return 0;
+    
+    const usersWithLawnSize = allUsers.filter(user => user.lawnSize !== null && user.lawnSize > 0);
+    if (usersWithLawnSize.length === 0) return 0;
+    
+    const totalLawnSize = usersWithLawnSize.reduce((sum, user) => sum + (user.lawnSize || 0), 0);
+    return Math.round(totalLawnSize / usersWithLawnSize.length);
+  }
+  
+  // Internal metrics tracking
+  async incrementMetric(metricKey: string): Promise<void> {
+    await db.insert(systemMetrics)
+      .values({ metricKey, metricValue: 1 })
+      .onConflictDoUpdate({
+        target: systemMetrics.metricKey,
+        set: {
+          metricValue: sql`${systemMetrics.metricValue} + 1`,
+          updatedAt: new Date()
+        }
+      });
   }
 }
 
