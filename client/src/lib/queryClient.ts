@@ -46,9 +46,29 @@ export const queryClient = new QueryClient({
     queries: {
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
-      refetchOnWindowFocus: false,
+      refetchOnWindowFocus: (query) => {
+        // Only refetch on window focus if query has errors (self-healing)
+        return query.state.status === 'error';
+      },
       staleTime: Infinity,
-      retry: false,
+      retry: (failureCount, error) => {
+        // Parse HTTP status code from error message (format: "503: ...")
+        const statusMatch = error instanceof Error && error.message.match(/^(\d{3}):/);
+        const statusCode = statusMatch ? parseInt(statusMatch[1]) : null;
+        
+        // Don't retry on client errors (401, 404) - these won't fix themselves
+        if (statusCode && (statusCode === 401 || statusCode === 404)) {
+          return false;
+        }
+        
+        // Retry up to 4 times for server errors (like 503 during initialization)
+        // Total delay: 1s + 2s + 4s + 8s = 15s (covers 5s+ initialization)
+        return failureCount < 4;
+      },
+      retryDelay: (attemptIndex) => {
+        // Exponential backoff: 1s, 2s, 4s, 8s (capped at 8s)
+        return Math.min(1000 * 2 ** attemptIndex, 8000);
+      },
     },
     mutations: {
       retry: false,

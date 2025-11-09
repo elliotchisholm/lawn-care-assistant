@@ -31,7 +31,7 @@ export default function Home() {
   const [selectedWeek, setSelectedWeek] = useState(currentWeekNumber);
   
   // Fetch selected week's application from database
-  const { data: currentWeek, isLoading: isWeekLoading, error: weekError } = useQuery<WeeklySchedule>({
+  const { data: currentWeek, isLoading: isWeekLoading, error: weekError, refetch: refetchWeek } = useQuery<WeeklySchedule>({
     queryKey: ["/api/schedule", selectedWeek],
   });
 
@@ -170,9 +170,19 @@ export default function Home() {
               <Skeleton className="h-96 w-full" data-testid="skeleton-loading-application" />
             )}
             {weekError && (
-              <div className="bg-destructive/10 border border-destructive text-destructive px-4 py-3 rounded" data-testid="error-application">
-                <p className="font-medium">Failed to load weekly application schedule</p>
-                <p className="text-sm">Please try again later or contact support if the problem persists.</p>
+              <div className="bg-destructive/10 border border-destructive text-destructive px-4 py-3 rounded space-y-3" data-testid="error-application">
+                <div>
+                  <p className="font-medium">Failed to load weekly application schedule</p>
+                  <p className="text-sm">The server may still be initializing. Please try again.</p>
+                </div>
+                <Button 
+                  onClick={() => refetchWeek()} 
+                  variant="destructive" 
+                  size="sm"
+                  data-testid="button-retry-schedule"
+                >
+                  Retry Now
+                </Button>
               </div>
             )}
             {!isWeekLoading && !weekError && isRestWeek && (
