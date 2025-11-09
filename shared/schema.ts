@@ -124,3 +124,13 @@ export interface InventoryAdjustment {
   previousQuantity: number;
   newQuantity: number;
 }
+
+// System metrics table for tracking operational counters (Phase 1 observability)
+export const systemMetrics = pgTable("system_metrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  metricKey: text("metric_key").notNull().unique(),
+  metricValue: integer("metric_value").notNull().default(0),
+  updatedAt: timestamp("updated_at").defaultNow().notNull()
+});
+
+export type SystemMetric = typeof systemMetrics.$inferSelect;

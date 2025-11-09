@@ -21,7 +21,8 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use((req, res, next) => {
+// Enhanced structured logging middleware
+app.use((req: any, res, next) => {
   const start = Date.now();
   const path = req.path;
   let capturedJsonResponse: Record<string, any> | undefined = undefined;
@@ -35,6 +36,20 @@ app.use((req, res, next) => {
   res.on("finish", () => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
+      // Structured JSON logging for Phase 1 observability
+      const logData = {
+        timestamp: new Date().toISOString(),
+        method: req.method,
+        path: req.path,
+        status: res.statusCode,
+        duration: duration,
+        userId: req.user?.claims?.sub || null
+      };
+      
+      // Log structured JSON (one line for easy parsing)
+      console.log(JSON.stringify(logData));
+      
+      // Also log human-readable format for development
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
       if (capturedJsonResponse) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;

@@ -10,18 +10,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication middleware
   await setupAuth(app);
 
-  // Health check and diagnostic endpoint
+  // Enhanced health check endpoint (Phase 1 observability)
   app.get('/api/health', async (_req, res) => {
     try {
       const scheduleCount = await storage.getScheduleCount();
       const isInitialized = (app.get('isInitialized') as boolean) || false;
       
       res.json({
-        status: 'ok',
+        status: 'healthy',
+        uptime: process.uptime(),
         initialized: isInitialized,
         database: {
           connected: true,
           scheduleWeeksLoaded: scheduleCount
+        },
+        memoryUsage: {
+          rss: Math.round(process.memoryUsage().rss / 1024 / 1024),
+          heapTotal: Math.round(process.memoryUsage().heapTotal / 1024 / 1024),
+          heapUsed: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+          external: Math.round(process.memoryUsage().external / 1024 / 1024),
+          unit: 'MB'
         },
         timestamp: new Date().toISOString()
       });
@@ -31,6 +39,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         initialized: false,
         error: error instanceof Error ? error.message : 'Unknown error',
         timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // Basic metrics endpoint (Phase 1 observability) - admin only
+  app.get('/api/metrics', isAuthenticated, async (_req, res) => {
+    try {
+      const [totalUsers, totalInventoryItems, totalApplicationsMarked, totalUndoOperations, averageLawnSize] = await Promise.all([
+        storage.getTotalUsers(),
+        storage.getTotalInventoryItems(),
+        storage.getTotalApplicationsMarked(),
+        storage.getTotalUndoOperations(),
+        storage.getAverageLawnSize()
+      ]);
+      
+      res.json({
+        totalUsers,
+        totalInventoryItems,
+        totalApplicationsMarked,
+        totalUndoOperations,
+        averageLawnSize,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Error fetching metrics:", error);
+      res.status(500).json({ 
+        error: "Failed to fetch metrics",
+        message: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   });
