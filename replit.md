@@ -136,4 +136,31 @@ Preferred communication style: Simple, everyday language.
 - **Health Monitoring**: `/api/health` endpoint reports initialization status and database connection
 - **Critical Fix**: Seed module includes environment check (`NODE_ENV !== 'production'`) to prevent standalone execution code from calling `process.exit()` in bundled production builds
 
+### Observability and Monitoring (Phase 1)
+- **Structured Logging**: JSON-formatted logs for all API requests
+  - Captures: timestamp, method, path, status code, duration, userId
+  - Dual format: JSON for parsing + human-readable for development
+  - Example: `{"timestamp":"2025-11-09T00:25:48.639Z","method":"GET","path":"/api/auth/user","status":401,"duration":2,"userId":null}`
+- **Health Check Endpoint**: Enhanced `/api/health` endpoint (public)
+  - Reports: status, uptime, initialization state, database connection
+  - Memory usage: RSS, heap total, heap used, external (in MB)
+  - Schedule loading status with week count
+- **Metrics Endpoint**: `/api/metrics` endpoint (authenticated)
+  - Total users count
+  - Total inventory items across all users
+  - Total applications marked (completed weeks)
+  - Total undo operations (tracked in system_metrics table)
+  - Average lawn size across users
+  - All metrics use efficient COUNT queries for scalability
+- **Persistent Metrics Tracking**: system_metrics table
+  - Key-value store for operational counters
+  - Atomic increment operations for concurrent safety
+  - Currently tracks: total_undo_operations
+  - Designed for future Phase 2/3 metric expansion
+- **Retry Logic**: React Query automatic retry with exponential backoff
+  - 4 retry attempts (1s, 2s, 4s, 8s) = ~15 second window
+  - Smart retry: only retries server errors (503), skips client errors (401, 404)
+  - Self-healing: automatically refetches on window focus for error states
+  - Manual retry button for user-initiated recovery
+
 The application architecture prioritizes performance, accessibility, and maintainability while providing a comprehensive solution for lawn care management and product recommendations.
