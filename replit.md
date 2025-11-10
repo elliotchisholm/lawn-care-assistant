@@ -163,4 +163,19 @@ Preferred communication style: Simple, everyday language.
   - Self-healing: automatically refetches on window focus for error states
   - Manual retry button for user-initiated recovery
 
+### Future Enhancements
+
+**NZLA Shopping Cart Integration (Planned)**
+- **Documentation**: Comprehensive Phase 1 implementation plan available in `phase-1-implementation-plan.md`
+- **Goal**: Enable users to add purchase recommendations directly to NZLA shop cart with one click
+- **Approach**: URL-based cart integration (Phase 1) → AJAX integration (Phase 2) → API partnership (Phase 3)
+- **Status**: Planning complete, awaiting product ID discovery and platform detection
+- **Timeline**: Phase 1 estimated at 2 weeks (~12 hours effort)
+- **Key Features**:
+  - Direct "Add to Cart" buttons on purchase recommendations
+  - Automatic package quantity calculation
+  - Seamless integration with https://www.newzealandlawnaddicts.com/shop/
+  - Graceful fallback for unmapped products
+  - Opens shop in new tab to preserve app state
+
 The application architecture prioritizes performance, accessibility, and maintainability while providing a comprehensive solution for lawn care management and product recommendations.
