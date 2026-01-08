@@ -110,10 +110,10 @@ function InventoryForm({ item, open, onOpenChange }: InventoryFormProps) {
 
   const createMutation = useMutation({
     mutationFn: async (data: InventoryFormData) => {
-      // Validate that quantity is a valid number (but send as string for decimal precision)
+      // Validate that quantity is a valid positive number for new items
       const quantity = parseFloat(data.currentQuantity);
       if (isNaN(quantity) || quantity <= 0) {
-        throw new Error("Quantity must be a valid positive number");
+        throw new Error("Quantity must be a positive number when adding new inventory");
       }
       
       const response = await fetch("/api/inventory", {
@@ -164,10 +164,10 @@ function InventoryForm({ item, open, onOpenChange }: InventoryFormProps) {
     mutationFn: async (data: InventoryFormData) => {
       if (!item) throw new Error("No item to update");
       
-      // Validate that quantity is a valid number (but send as string for decimal precision)
+      // Validate that quantity is a valid non-negative number (allow 0 for used-up inventory)
       const quantity = parseFloat(data.currentQuantity);
-      if (isNaN(quantity) || quantity <= 0) {
-        throw new Error("Quantity must be a valid positive number");
+      if (isNaN(quantity) || quantity < 0) {
+        throw new Error("Quantity cannot be negative");
       }
       
       const response = await fetch(`/api/inventory/${item.id}`, {
