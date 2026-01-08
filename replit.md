@@ -190,6 +190,7 @@ Preferred communication style: Simple, everyday language.
 4. Undo restores exact previous inventory values
 5. 52-week schedule completeness and structure validation
 6. Auth guard enforcement on all protected endpoints
+7. Duplicate week applications rejected with 409 Conflict (must undo first to reapply)
 
 ### Future Enhancements
 
