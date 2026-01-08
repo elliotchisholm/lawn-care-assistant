@@ -163,6 +163,34 @@ Preferred communication style: Simple, everyday language.
   - Self-healing: automatically refetches on window focus for error states
   - Manual retry button for user-initiated recovery
 
+### Testing Infrastructure
+
+**Test Suite**: Backend integration tests using Vitest + Supertest
+- **Location**: `server/__tests__/`
+- **Configuration**: `vitest.config.ts`
+- **Run Command**: `npx vitest run` (all tests) or `npx vitest` (watch mode)
+
+**Test Coverage** (56 tests total):
+- **Inventory API** (`inventory.test.ts`): CRUD operations, upsert behavior, unit handling, auth guards
+- **Applied Weeks API** (`applied-weeks.test.ts`): Mark/undo applications, Store Zero logic, unit conversions
+- **Schedule API** (`schedule.test.ts`): 52-week schedule retrieval, public access verification
+- **Auth Guards**: Validates protected routes (401 for unauthenticated), public routes accessibility
+- **Health/Metrics**: Endpoint response structure, memory reporting, metric values
+
+**Test Architecture**:
+- **Mock Auth**: Header-based (`x-test-user-id`) authentication bypass for testing
+- **Test Helpers** (`helpers.ts`): User creation/cleanup, inventory setup, auth headers
+- **Database Isolation**: Tests use unique user IDs prefixed with `test-user-` for cleanup
+- **Real Database**: Tests run against development database for integration accuracy
+
+**Key Test Cases**:
+1. Inventory upsert prevents duplicate products per user
+2. Store Zero logic prevents negative inventory (sets to 0 instead)
+3. Unit conversion accuracy (g↔kg, ml↔L) during mark/undo
+4. Undo restores exact previous inventory values
+5. 52-week schedule completeness and structure validation
+6. Auth guard enforcement on all protected endpoints
+
 ### Future Enhancements
 
 **NZLA Shopping Cart Integration (Planned)**
