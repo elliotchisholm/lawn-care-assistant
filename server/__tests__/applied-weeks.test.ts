@@ -163,7 +163,7 @@ describe('Applied Weeks API', () => {
       expect(response.status).toBe(400);
     });
 
-    it('allows re-applying same week (upsert behavior)', async () => {
+    it('rejects duplicate week application with 409', async () => {
       await createTestInventoryItem(testUser.id, 'NZLA Lawn Fertiliser', 1000, 'g');
 
       const firstApply = await request(app)
@@ -200,14 +200,14 @@ describe('Applied Weeks API', () => {
           ]
         });
 
-      expect(secondApply.status).toBe(201);
-      expect(secondApply.body.weekNumber).toBe(35);
+      expect(secondApply.status).toBe(409);
+      expect(secondApply.body.error).toContain('already applied');
 
       const inventoryCheck = await request(app)
         .get('/api/inventory')
         .set(authHeaders);
       const fertilizer = inventoryCheck.body.find((i: any) => i.productName === 'NZLA Lawn Fertiliser');
-      expect(parseFloat(fertilizer.currentQuantity)).toBe(800);
+      expect(parseFloat(fertilizer.currentQuantity)).toBe(900);
     });
   });
 

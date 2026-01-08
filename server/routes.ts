@@ -219,6 +219,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const validatedData = insertAppliedWeekSchema.parse({ ...req.body, userId });
       
+      // Check if week is already applied - reject duplicates
+      const existingApplication = await storage.getAppliedWeek(userId, validatedData.weekNumber);
+      if (existingApplication) {
+        res.status(409).json({ error: "Week already applied. Use undo first if you want to reapply." });
+        return;
+      }
+      
       // Validate adjustments structure
       const adjustmentsSchema = z.array(z.object({
         productName: z.string(),
