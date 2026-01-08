@@ -48,12 +48,29 @@ const inventoryFormSchema = z.object({
 
 type InventoryFormData = z.infer<typeof inventoryFormSchema>;
 
-const commonUnits = [
+const liquidUnits = [
   { value: "ml", label: "ml" },
   { value: "L", label: "L" },
-  { value: "g", label: "g" },
-  { value: "kg", label: "kg" }
 ];
+
+const granularUnits = [
+  { value: "g", label: "g" },
+  { value: "kg", label: "kg" },
+];
+
+// Get appropriate units based on product type
+function getUnitsForProduct(productName: string) {
+  const product = NZLA_PRODUCTS.find(p => p.name === productName);
+  if (!product) return liquidUnits; // Default to liquid
+  return product.unit === "g" ? granularUnits : liquidUnits;
+}
+
+// Get default unit for a product
+function getDefaultUnitForProduct(productName: string) {
+  const product = NZLA_PRODUCTS.find(p => p.name === productName);
+  if (!product) return "ml"; // Default to ml
+  return product.unit === "g" ? "g" : "ml";
+}
 
 interface InventoryItem {
   id: string;
@@ -241,7 +258,14 @@ function InventoryForm({ item, open, onOpenChange }: InventoryFormProps) {
                 <FormItem>
                   <FormLabel>Product Name</FormLabel>
                   <FormControl>
-                    <Select value={field.value} onValueChange={field.onChange}>
+                    <Select 
+                      value={field.value} 
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        // Auto-set the appropriate unit for this product
+                        form.setValue("unit", getDefaultUnitForProduct(value));
+                      }}
+                    >
                       <SelectTrigger data-testid="select-product">
                         <SelectValue placeholder="Select a product" />
                       </SelectTrigger>
@@ -283,26 +307,30 @@ function InventoryForm({ item, open, onOpenChange }: InventoryFormProps) {
               <FormField
                 control={form.control}
                 name="unit"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Unit</FormLabel>
-                    <FormControl>
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <SelectTrigger data-testid="select-unit">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {commonUnits.map((unit) => (
-                            <SelectItem key={unit.value} value={unit.value}>
-                              {unit.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  const selectedProduct = form.watch("productName");
+                  const availableUnits = getUnitsForProduct(selectedProduct);
+                  return (
+                    <FormItem>
+                      <FormLabel>Unit</FormLabel>
+                      <FormControl>
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <SelectTrigger data-testid="select-unit">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableUnits.map((unit) => (
+                              <SelectItem key={unit.value} value={unit.value}>
+                                {unit.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
             </div>
 
