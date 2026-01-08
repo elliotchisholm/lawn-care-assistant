@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -227,6 +228,9 @@ function InventoryForm({ item, open, onOpenChange }: InventoryFormProps) {
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>{item ? "Edit" : "Add"} Inventory Item</DialogTitle>
+          <DialogDescription>
+            {item ? "Update the details for this inventory item." : "Add a new product to your inventory."}
+          </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
