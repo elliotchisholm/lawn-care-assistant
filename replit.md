@@ -63,10 +63,30 @@ Preferred communication style: Simple, everyday language.
 - **Retry Logic**: React Query automatic retry with exponential backoff for server errors.
 
 ### Testing
-- **Test Suite**: Comprehensive testing with Vitest.
-- **Backend Tests**: Integration tests using Supertest for API functionality, auth guards, and health/metrics.
-- **Frontend Tests**: Component tests using React Testing Library for UI components like `LawnSizeCalculator` and `Header`.
-- **Architecture**: Mock authentication, custom test utilities, and database isolation for accurate integration testing.
+
+**Test Suite**: Comprehensive testing with Vitest (74 tests total)
+- **Backend Tests** (`server/__tests__/`): Integration tests using Supertest - 56 tests
+- **Frontend Tests** (`client/src/__tests__/`): Component tests using React Testing Library - 18 tests
+
+**Run Commands**:
+- Backend only: `npx vitest run`
+- Frontend only: `npx vitest run --config vitest.client.config.ts`
+- Full suite: `bash scripts/run-tests.sh`
+- Pre-deploy validation: `bash scripts/pre-deploy.sh`
+
+**Configuration**:
+- `vitest.config.ts` - Backend tests (Node environment)
+- `vitest.client.config.ts` - Frontend tests (JSDOM environment)
+
+**CI Integration Scripts** (`scripts/`):
+- `run-tests.sh` - Runs both backend and frontend tests sequentially
+- `pre-deploy.sh` - Full validation: TypeScript check, test suite, health check, schedule verification
+
+**Test Coverage**:
+- Inventory CRUD, upsert behavior, unit handling
+- Applied weeks mark/undo, Store Zero logic, duplicate rejection (409)
+- Schedule API, auth guards, health/metrics endpoints
+- LawnSizeCalculator form handling, Header auth states
 
 ## External Dependencies
 
