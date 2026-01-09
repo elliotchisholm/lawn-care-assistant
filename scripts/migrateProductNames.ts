@@ -4,11 +4,11 @@
  * This script migrates existing inventory records to use canonical product names.
  * It's safe to run multiple times (idempotent).
  * 
- * Run with: tsx server/migrateProductNames.ts
+ * Run with: tsx scripts/migrateProductNames.ts
  */
 
-import { db } from './db';
-import { inventory } from '@shared/schema';
+import { db } from '../server/db';
+import { inventory } from '../shared/schema';
 import { PRODUCT_NAME_MAPPINGS, normalizeProductName, CANONICAL_PRODUCT_NAMES } from '../shared/canonicalProductNames';
 import { sql } from 'drizzle-orm';
 
