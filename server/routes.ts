@@ -66,7 +66,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error fetching metrics:", error);
       res.status(500).json({ 
         error: "Failed to fetch metrics",
-        message: error instanceof Error ? error.message : 'Unknown error'
+        details: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   });
@@ -79,7 +79,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(user);
     } catch (error) {
       console.error("Error fetching user:", error);
-      res.status(500).json({ message: "Failed to fetch user" });
+      res.status(500).json({ error: "Failed to fetch user" });
     }
   });
 
