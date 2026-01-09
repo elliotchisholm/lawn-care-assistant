@@ -88,6 +88,32 @@ Preferred communication style: Simple, everyday language.
 - Schedule API, auth guards, health/metrics endpoints
 - LawnSizeCalculator form handling, Header auth states
 
+## Coding Conventions
+
+### API Design
+- **Error Responses**: Use `{ error: "message", details?: any }` format for all errors
+- **HTTP Status Codes**: 400 (validation), 404 (not found), 409 (conflict), 500 (server error), 503 (service unavailable)
+- **Naming**: All API payloads use camelCase
+
+### Data Types
+- **Decimal Precision**: Store quantities as strings in DB, convert with `parseFloat()` for calculations
+- **Canonical Products**: Use `shared/canonicalProductNames.ts` as the single source of truth for product names
+
+### Frontend Patterns
+- **Custom queryFn**: User-scoped queries must use custom queryFn constructing URLs from first array element only
+- **Cache Keys**: Include user ID in query keys to prevent cross-user data leakage
+
+### Testing
+- **Backend**: Integration tests with Supertest, mock auth via header bypass
+- **Frontend**: Component tests with React Testing Library
+- **E2E**: Playwright for user flow testing
+
+### File Organization
+- `shared/`: Types, schemas, constants shared between frontend and backend
+- `server/`: Express routes, storage layer, database access
+- `client/src/`: React components, pages, hooks
+- `scripts/`: Utility scripts for migrations and testing
+
 ## External Dependencies
 
 - **Neon Database**: Serverless PostgreSQL hosting.

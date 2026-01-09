@@ -31,9 +31,17 @@ export default function Home() {
   const [selectedWeek, setSelectedWeek] = useState(currentWeekNumber);
   
   // Fetch selected week's application from database
-  const { data: currentWeek, isLoading: isWeekLoading, error: weekError, refetch: refetchWeek } = useQuery<WeeklySchedule>({
+  const weekQuery = useQuery<WeeklySchedule, Error>({
     queryKey: ["/api/schedule", selectedWeek],
+    queryFn: async () => {
+      const res = await fetch(`/api/schedule/${selectedWeek}`, { credentials: "include" });
+      if (!res.ok) throw new Error(`${res.status}: ${res.statusText}`);
+      return res.json();
+    },
   });
+  const currentWeek = weekQuery.data;
+  const isWeekLoading = weekQuery.isPending;
+  const refetchWeek = weekQuery.refetch;
 
   // Check if this is a rest week or has application data
   const isRestWeek = currentWeek?.isRestWeek === 1;
@@ -169,7 +177,7 @@ export default function Home() {
             {isWeekLoading && (
               <Skeleton className="h-96 w-full" data-testid="skeleton-loading-application" />
             )}
-            {weekError && (
+            {weekQuery.isError && (
               <div className="bg-destructive/10 border border-destructive text-destructive px-4 py-3 rounded space-y-3" data-testid="error-application">
                 <div>
                   <p className="font-medium">Failed to load weekly application schedule</p>
@@ -185,7 +193,7 @@ export default function Home() {
                 </Button>
               </div>
             )}
-            {!isWeekLoading && !weekError && isRestWeek && (
+            {Boolean(weekQuery.isSuccess && isRestWeek) && (
               <div className="bg-accent/10 border border-accent/30 rounded-lg p-6 text-center space-y-3" data-testid="card-rest-week">
                 <h3 className="text-lg font-semibold">🌿 Rest Period - No Application</h3>
                 <p className="text-sm text-muted-foreground">
@@ -201,7 +209,7 @@ export default function Home() {
                 </div>
               </div>
             )}
-            {!isWeekLoading && !weekError && hasApplicationDays && currentWeek?.applicationDays && (
+            {Boolean(weekQuery.isSuccess && hasApplicationDays && currentWeek?.applicationDays) && currentWeek && (
               <ProductCard
                 applicationDays={currentWeek.applicationDays as ApplicationDay[]}
                 lawnSize={lawnSize}
