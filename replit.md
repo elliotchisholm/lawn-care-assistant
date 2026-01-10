@@ -64,8 +64,8 @@ Preferred communication style: Simple, everyday language.
 
 ### Testing
 
-**Test Suite**: Comprehensive testing with Vitest (74 tests total)
-- **Backend Tests** (`server/__tests__/`): Integration tests using Supertest - 56 tests
+**Test Suite**: Comprehensive testing with Vitest (76 tests total)
+- **Backend Tests** (`server/__tests__/`): Integration tests using Supertest - 58 tests
 - **Frontend Tests** (`client/src/__tests__/`): Component tests using React Testing Library - 18 tests
 
 **Run Commands**:
@@ -86,6 +86,7 @@ Preferred communication style: Simple, everyday language.
 - Inventory CRUD, upsert behavior, unit handling
 - Applied weeks mark/undo, Store Zero logic, duplicate rejection (409)
 - Schedule API, auth guards, health/metrics endpoints
+- Product consistency (schedule products match canonical list)
 - LawnSizeCalculator form handling, Header auth states
 
 ## Coding Conventions
