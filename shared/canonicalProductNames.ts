@@ -15,7 +15,6 @@ export const CANONICAL_PRODUCT_NAMES = [
   'Humic+',
   'Iron+',
   'Amino',
-  'Amino+',
   'Restore',
   'Liquid N',
   'Liquid Boost',
@@ -67,16 +66,14 @@ export const PRODUCT_NAME_MAPPINGS: Record<string, CanonicalProductName> = {
   'NZLA Iron+': 'Iron+',
   'Iron Plus': 'Iron+',
   
-  // Amino variations
+  // Amino variations (Amino+ maps to Amino - same product)
   'Amino': 'Amino',
   'amino': 'Amino',
   'NZLA Amino': 'Amino',
-  
-  // Amino+ variations
-  'Amino+': 'Amino+',
-  'amino+': 'Amino+',
-  'NZLA Amino+': 'Amino+',
-  'Amino Plus': 'Amino+',
+  'Amino+': 'Amino',
+  'amino+': 'Amino',
+  'NZLA Amino+': 'Amino',
+  'Amino Plus': 'Amino',
   
   // Restore variations
   'Restore': 'Restore',

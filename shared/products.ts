@@ -14,7 +14,6 @@ export const NZLA_PRODUCTS: Product[] = [
   { name: "Humic+", unit: "ml" },
   { name: "Iron+", unit: "ml" },
   { name: "Amino", unit: "ml" },
-  { name: "Amino+", unit: "ml" },
   { name: "Restore", unit: "ml" },
   { name: "Liquid N", unit: "ml" },
   { name: "Liquid Boost", unit: "ml" },
