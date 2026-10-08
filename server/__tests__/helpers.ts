@@ -1,7 +1,7 @@
 import express, { type Express } from 'express';
 import { db } from '../db';
 import { users, inventory, appliedWeeks, systemMetrics } from '@shared/schema';
-import { eq, like } from 'drizzle-orm';
+import { and, eq, like } from 'drizzle-orm';
 
 export const TEST_USER_PREFIX = 'test-user-';
 
@@ -17,7 +17,7 @@ export async function createTestUser(suffix: string = Date.now().toString()): Pr
   const userId = `${TEST_USER_PREFIX}${suffix}`;
   const email = `test-${suffix}@example.com`;
   
-  const [user] = await db.insert(users)
+  const [returnedUser] = await db.insert(users)
     .values({
       id: userId,
       email,
@@ -36,7 +36,15 @@ export async function createTestUser(suffix: string = Date.now().toString()): Pr
       }
     })
     .returning();
-  
+
+  const [persistedUser] = returnedUser
+    ? [returnedUser]
+    : await db.select().from(users).where(eq(users.id, userId));
+  const user = returnedUser ?? persistedUser;
+  if (!user) {
+    throw new Error('Unable to load test user after upsert');
+  }
+
   return {
     id: user.id,
     email: user.email || email,
@@ -68,7 +76,7 @@ export async function createTestInventoryItem(
   quantity: number, 
   unit: string
 ) {
-  const [item] = await db.insert(inventory)
+  const [returnedItem] = await db.insert(inventory)
     .values({
       userId,
       productName,
@@ -84,8 +92,21 @@ export async function createTestInventoryItem(
       }
     })
     .returning();
-  
-  return item;
+
+  if (returnedItem) {
+    return returnedItem;
+  }
+
+  const [persistedItem] = await db.select().from(inventory)
+    .where(and(
+      eq(inventory.userId, userId),
+      eq(inventory.productName, productName)
+    ));
+  if (!persistedItem) {
+    throw new Error('Unable to load test inventory item after upsert');
+  }
+
+  return persistedItem;
 }
 
 export function createAuthenticatedRequest(userId: string): Record<string, string> {

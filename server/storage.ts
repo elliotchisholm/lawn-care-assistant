@@ -4,6 +4,16 @@ import { randomUUID } from "crypto";
 import { db } from "./db";
 import { eq, and, count, sql } from "drizzle-orm";
 
+function isEmptyNeonResultError(error: unknown): boolean {
+  if (!(error instanceof Error) || !("cause" in error)) {
+    return false;
+  }
+
+  const cause = error.cause;
+  return cause instanceof TypeError &&
+    cause.message === "Cannot read properties of null (reading 'map')";
+}
+
 // modify the interface with any CRUD methods
 // you might need
 
@@ -64,7 +74,20 @@ export class DatabaseStorage implements IStorage {
         },
       })
       .returning();
-    return user;
+    if (user) {
+      return user;
+    }
+
+    if (!userData.id) {
+      throw new Error("Unable to load user after upsert");
+    }
+
+    const persistedUser = await this.getUser(userData.id);
+    if (!persistedUser) {
+      throw new Error("Unable to load user after upsert");
+    }
+
+    return persistedUser;
   }
 
   async updateUserLawnSize(userId: string, lawnSize: number): Promise<User | undefined> {
@@ -72,21 +95,35 @@ export class DatabaseStorage implements IStorage {
       .set({ lawnSize, updatedAt: new Date() })
       .where(eq(users.id, userId))
       .returning();
-    return result[0];
+    return result[0] ?? this.getUser(userId);
   }
 
   // Inventory methods - use database for persistent storage
   async getUserInventory(userId: string): Promise<Inventory[]> {
-    return await db.select().from(inventory).where(eq(inventory.userId, userId));
+    try {
+      return await db.select().from(inventory).where(eq(inventory.userId, userId));
+    } catch (error) {
+      if (isEmptyNeonResultError(error)) {
+        return [];
+      }
+      throw error;
+    }
   }
 
   async getInventoryItem(userId: string, productName: string): Promise<Inventory | undefined> {
-    const items = await db.select().from(inventory)
-      .where(and(
-        eq(inventory.userId, userId),
-        eq(inventory.productName, productName)
-      ));
-    return items[0];
+    try {
+      const items = await db.select().from(inventory)
+        .where(and(
+          eq(inventory.userId, userId),
+          eq(inventory.productName, productName)
+        ));
+      return items[0];
+    } catch (error) {
+      if (isEmptyNeonResultError(error)) {
+        return undefined;
+      }
+      throw error;
+    }
   }
 
   async createInventoryItem(item: InsertInventory): Promise<Inventory> {
@@ -104,7 +141,12 @@ export class DatabaseStorage implements IStorage {
         },
       })
       .returning();
-    return result[0];
+    const persistedItem = result[0] ?? await this.getInventoryItem(item.userId, item.productName);
+    if (!persistedItem) {
+      throw new Error("Unable to load inventory item after upsert");
+    }
+
+    return persistedItem;
   }
 
   async updateInventoryItem(id: string, userId: string, item: UpdateInventory): Promise<Inventory | undefined> {
@@ -115,7 +157,23 @@ export class DatabaseStorage implements IStorage {
         eq(inventory.userId, userId)
       ))
       .returning();
-    return result[0];
+    if (result[0]) {
+      return result[0];
+    }
+
+    try {
+      const [persistedItem] = await db.select().from(inventory)
+        .where(and(
+          eq(inventory.id, id),
+          eq(inventory.userId, userId)
+        ));
+      return persistedItem;
+    } catch (error) {
+      if (isEmptyNeonResultError(error)) {
+        return undefined;
+      }
+      throw error;
+    }
   }
 
   async deleteInventoryItem(id: string, userId: string): Promise<boolean> {
@@ -155,12 +213,19 @@ export class DatabaseStorage implements IStorage {
 
   // Applied weeks methods
   async getAppliedWeek(userId: string, weekNumber: number): Promise<AppliedWeek | undefined> {
-    const [appliedWeek] = await db.select().from(appliedWeeks)
-      .where(and(
-        eq(appliedWeeks.userId, userId),
-        eq(appliedWeeks.weekNumber, weekNumber)
-      ));
-    return appliedWeek;
+    try {
+      const [appliedWeek] = await db.select().from(appliedWeeks)
+        .where(and(
+          eq(appliedWeeks.userId, userId),
+          eq(appliedWeeks.weekNumber, weekNumber)
+        ));
+      return appliedWeek;
+    } catch (error) {
+      if (isEmptyNeonResultError(error)) {
+        return undefined;
+      }
+      throw error;
+    }
   }
 
   async markWeekAsApplied(userId: string, weekNumber: number, adjustments: InventoryAdjustment[]): Promise<AppliedWeek> {
@@ -236,8 +301,13 @@ export class DatabaseStorage implements IStorage {
         }
       })
       .returning();
-    
-    return appliedWeek;
+
+    const persistedAppliedWeek = appliedWeek ?? await this.getAppliedWeek(userId, weekNumber);
+    if (!persistedAppliedWeek) {
+      throw new Error("Unable to load applied week after upsert");
+    }
+
+    return persistedAppliedWeek;
   }
 
   // Helper method to convert between units
