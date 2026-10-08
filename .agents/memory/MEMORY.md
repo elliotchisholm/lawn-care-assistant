@@ -1,0 +1,1 @@
+- [Neon HTTP empty results](neon-http-empty-results.md) — upgraded Drizzle may need explicit handling when the Neon endpoint returns null or omits mutation rows.
