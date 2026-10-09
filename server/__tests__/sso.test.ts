@@ -3,6 +3,7 @@ import express, { type Express } from "express";
 import request from "supertest";
 import { decryptRefreshToken, encryptRefreshToken } from "../sessionTokens";
 import { upgradeLegacySessions } from "../legacySessions";
+import { applySecurity } from "../security";
 
 const auth = vi.hoisted(() => ({
   mode: "success" as "success" | "denied" | "error",
@@ -65,12 +66,18 @@ describe("SSO redirect policy", () => {
 
   beforeAll(async () => {
     vi.stubEnv("REPLIT_DOMAINS", "sso.example.test");
+    vi.stubEnv("ISSUER_URL", "https://provider.example/oidc");
     vi.stubEnv("REPL_ID", "test-repl");
     vi.stubEnv("SESSION_SECRET", "test-only-session-secret");
     // The shared API-test setup mocks auth; exercise the actual route definitions here.
     const { setupAuth, isAuthenticated } = await vi.importActual<typeof import("../replitAuth")>("../replitAuth");
     authenticateUser = isAuthenticated;
     app = express();
+    app.set("env", "production");
+    applySecurity(app);
+    app.get("/logout-test-form", (_req, res) => {
+      res.type("html").send('<form method="post" action="/api/logout"><button>Sign out</button></form>');
+    });
     await setupAuth(app);
   });
   afterAll(() => vi.unstubAllEnvs());
@@ -187,6 +194,48 @@ describe("SSO redirect policy", () => {
     expect(response.status).toBe(405);
     expect(response.headers.allow).toBe("POST");
     expect(auth.logout).not.toHaveBeenCalled();
+  });
+
+  it.each([undefined, "same-origin"])(
+    "allows a native same-origin logout form through the security stack (Fetch Metadata: %s)",
+    async fetchSite => {
+      const page = await request(app).get("/logout-test-form").set("Host", "sso.example.test");
+      // A no-referrer document policy taints the Origin of native POST navigation
+      // to "null". Model that browser behavior, not a hand-picked good header.
+      const origin = page.headers["referrer-policy"] === "no-referrer"
+        ? "null" : "https://sso.example.test";
+      const submission = request(app).post("/api/logout")
+        .set("Host", "sso.example.test").set("Origin", origin).type("form").send({});
+      if (fetchSite) submission.set("Sec-Fetch-Site", fetchSite);
+      const response = await submission;
+      expect(response.status).toBe(303);
+      expect(page.headers["referrer-policy"]).toBe("same-origin");
+      expect(auth.logout).toHaveBeenCalledOnce();
+      expect(auth.destroy).toHaveBeenCalledOnce();
+      expect(response.headers["set-cookie"][0]).toContain("connect.sid=;");
+      expect(response.headers["set-cookie"][0]).toContain("HttpOnly");
+      expect(response.headers["set-cookie"][0]).toContain("Secure");
+      expect(new URL(response.headers.location).searchParams.get("return"))
+        .toBe("https://sso.example.test");
+      const formAction = page.headers["content-security-policy"]
+        .match(/(?:^|;)\s*form-action ([^;]+)/)?.[1].split(/\s+/);
+      expect(formAction).toEqual(["'self'", new URL(response.headers.location).origin]);
+    },
+  );
+
+  it.each([
+    { origin: "https://attacker.example", site: "cross-site" },
+    { origin: "https://sso.example.test", site: "cross-site" },
+    { origin: "https://attacker.example", site: "same-origin" },
+    { origin: "null", site: "same-origin" },
+  ])("blocks unsafe logout without changing the session (%j)", async ({ origin, site }) => {
+    const response = await request(app).post("/api/logout")
+      .set("Host", "sso.example.test").set("Origin", origin).set("Sec-Fetch-Site", site);
+    expect(response.status).toBe(403);
+    expect(response.body).toEqual({ error: "Cross-site request blocked" });
+    expect(auth.logout).not.toHaveBeenCalled();
+    expect(auth.destroy).not.toHaveBeenCalled();
+    expect(response.headers["set-cookie"]).toBeUndefined();
   });
 
   it("destroys the session on POST logout and uses only a configured return domain", async () => {

@@ -46,11 +46,18 @@ export function applySecurity(app: Express, limits = { api: 300, login: 20, writ
   app.set("trust proxy", proxies);
   app.set("rateLimitConfig", limits);
   const development = app.get("env") === "development";
+  const authProviderOrigin = new URL(process.env.ISSUER_URL ?? "https://replit.com/oidc").origin;
   app.use(helmet({
     frameguard: false,
     crossOriginEmbedderPolicy: false,
+    // no-referrer can turn a native same-origin POST form's Origin into "null".
+    // Retain same-origin navigation metadata without sending referrers off-site.
+    referrerPolicy: { policy: "same-origin" },
     contentSecurityPolicy: {
       directives: {
+        // Chromium also applies form-action to redirects after native POSTs.
+        // Logout redirects to the configured provider to end its SSO session.
+        formAction: ["'self'", authProviderOrigin],
         scriptSrc: ["'self'", "https://replit.com", ...(development ? ["'unsafe-inline'"] : [])],
         styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
