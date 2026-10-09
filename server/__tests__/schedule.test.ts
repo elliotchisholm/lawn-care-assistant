@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import request from 'supertest';
 import { createTestApp, createTestUser, cleanupTestUser, createAuthenticatedRequest, cleanupAllTestUsers } from './helpers';
 import type { Express } from 'express';
@@ -223,32 +223,36 @@ describe('Health and Metrics Endpoints', () => {
 
       expect(response.status).toBe(200);
       expect(response.body).toHaveProperty('status', 'healthy');
-      expect(response.body).toHaveProperty('uptime');
-      expect(response.body).toHaveProperty('database');
-      expect(response.body).toHaveProperty('memoryUsage');
-      expect(response.body).toHaveProperty('timestamp');
+      expect(response.body).toEqual({ status: 'healthy' });
     });
 
-    it('reports database connection status', async () => {
+    it('does not disclose database diagnostics publicly', async () => {
       const response = await request(app)
         .get('/api/health');
 
-      expect(response.body.database.connected).toBe(true);
-      expect(typeof response.body.database.scheduleWeeksLoaded).toBe('number');
+      expect(response.body).not.toHaveProperty('database');
     });
 
-    it('reports memory usage in MB', async () => {
+    it('does not disclose memory usage or uptime publicly', async () => {
       const response = await request(app)
         .get('/api/health');
 
-      expect(response.body.memoryUsage.unit).toBe('MB');
-      expect(typeof response.body.memoryUsage.rss).toBe('number');
-      expect(typeof response.body.memoryUsage.heapUsed).toBe('number');
+      expect(response.body).not.toHaveProperty('memoryUsage');
+      expect(response.body).not.toHaveProperty('uptime');
     });
   });
 
   describe('GET /api/metrics (authenticated)', () => {
-    it('returns metrics for authenticated user', async () => {
+    it('rejects ordinary authenticated users', async () => {
+      vi.stubEnv('ADMIN_USER_IDS', '');
+      const response = await request(app).get('/api/metrics').set(authHeaders);
+      expect(response.status).toBe(403);
+      expect(response.body).not.toHaveProperty('totalUsers');
+      vi.unstubAllEnvs();
+    });
+
+    it('returns metrics only for an explicitly allowed administrator', async () => {
+      vi.stubEnv('ADMIN_USER_IDS', testUser.id);
       const response = await request(app)
         .get('/api/metrics')
         .set(authHeaders);
@@ -260,9 +264,11 @@ describe('Health and Metrics Endpoints', () => {
       expect(response.body).toHaveProperty('totalUndoOperations');
       expect(response.body).toHaveProperty('averageLawnSize');
       expect(response.body).toHaveProperty('timestamp');
+      vi.unstubAllEnvs();
     });
 
     it('returns numeric values for all metrics', async () => {
+      vi.stubEnv('ADMIN_USER_IDS', testUser.id);
       const response = await request(app)
         .get('/api/metrics')
         .set(authHeaders);
@@ -272,6 +278,7 @@ describe('Health and Metrics Endpoints', () => {
       expect(typeof response.body.totalApplicationsMarked).toBe('number');
       expect(typeof response.body.totalUndoOperations).toBe('number');
       expect(typeof response.body.averageLawnSize).toBe('number');
+      vi.unstubAllEnvs();
     });
   });
 });

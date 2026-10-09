@@ -2,6 +2,7 @@ import express, { type Express } from 'express';
 import { db } from '../db';
 import { users, inventory, appliedWeeks, systemMetrics } from '@shared/schema';
 import { and, eq, like } from 'drizzle-orm';
+import { applySecurity } from '../security';
 
 export const TEST_USER_PREFIX = 'test-user-';
 
@@ -118,8 +119,9 @@ export function createAuthenticatedRequest(userId: string): Record<string, strin
 
 export async function createTestApp(): Promise<Express> {
   const app = express();
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: false }));
+  applySecurity(app);
+  app.use(express.json({ limit: "32kb" }));
+  app.use(express.urlencoded({ extended: false, limit: "32kb" }));
   
   const { registerRoutes } = await import('../routes');
   await registerRoutes(app);

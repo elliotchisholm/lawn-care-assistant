@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { lawnSizeSchema, MAX_LAWN_SIZE } from "@shared/validation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,9 +37,9 @@ export default function LawnSizeCalculator({ onSizeChange, currentSize, isSaving
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const size = parseFloat(inputValue);
-    if (size > 0) {
-      onSizeChange(size);
+    const size = lawnSizeSchema.safeParse(Number(inputValue));
+    if (size.success) {
+      onSizeChange(size.data);
     }
   };
 
@@ -67,7 +68,8 @@ export default function LawnSizeCalculator({ onSizeChange, currentSize, isSaving
                 onChange={handleInputChange}
                 className="pr-10"
                 min="1"
-                step="0.1"
+                max={MAX_LAWN_SIZE}
+                step="1"
                 disabled={isLoading || isSaving}
                 data-testid="input-lawn-size"
               />

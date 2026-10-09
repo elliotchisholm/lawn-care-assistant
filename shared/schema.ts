@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import { pgTable, text, varchar, integer, decimal, timestamp, jsonb, index, unique } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import { productNameSchema, quantitySchema, unitSchema, adjustmentsSchema, MAX_NOTES_LENGTH } from "./validation";
 
 // Session storage table for Replit Auth
 export const sessions = pgTable(
@@ -53,6 +54,11 @@ export const inventory = pgTable("inventory", {
 export const insertInventorySchema = createInsertSchema(inventory).omit({
   id: true,
   lastUpdated: true
+}).extend({
+  productName: productNameSchema,
+  currentQuantity: quantitySchema,
+  unit: unitSchema,
+  notes: z.string().max(MAX_NOTES_LENGTH).nullable().optional(),
 });
 
 export const updateInventorySchema = insertInventorySchema.partial().omit({
@@ -111,6 +117,9 @@ export const appliedWeeks = pgTable("applied_weeks", {
 export const insertAppliedWeekSchema = createInsertSchema(appliedWeeks).omit({
   id: true,
   appliedAt: true
+}).extend({
+  weekNumber: z.number().int().min(1).max(52),
+  adjustments: adjustmentsSchema,
 });
 
 export type InsertAppliedWeek = z.infer<typeof insertAppliedWeekSchema>;

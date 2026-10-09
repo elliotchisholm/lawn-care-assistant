@@ -12,10 +12,6 @@ interface HeaderProps {
 export default function Header({ onMenuClick }: HeaderProps) {
   const { user, isAuthenticated } = useAuth();
 
-  const handleLogout = () => {
-    window.location.href = "/api/logout";
-  };
-
   const handleLogin = () => {
     window.location.href = "/api/login";
   };
@@ -101,16 +97,18 @@ export default function Header({ onMenuClick }: HeaderProps) {
                     {getUserInitials(user as User)}
                   </AvatarFallback>
                 </Avatar>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  onClick={handleLogout}
-                  data-testid="button-logout"
-                  title="Logout"
-                  className="shrink-0"
-                >
-                  <LogOut className="h-4 w-4" />
-                </Button>
+                <form method="post" action="/api/logout">
+                  <Button
+                    type="submit"
+                    variant="ghost"
+                    size="icon"
+                    data-testid="button-logout"
+                    title="Logout"
+                    className="shrink-0"
+                  >
+                    <LogOut className="h-4 w-4" />
+                  </Button>
+                </form>
               </>
             ) : (
               <Button 

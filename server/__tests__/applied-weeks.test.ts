@@ -59,7 +59,7 @@ describe('Applied Weeks API', () => {
 
   describe('POST /api/applied-weeks', () => {
     it('marks week as applied and deducts inventory', async () => {
-      await createTestInventoryItem(testUser.id, 'NZLA Lawn Fertiliser', 1000, 'g');
+      await createTestInventoryItem(testUser.id, 'NZLA All Seasons', 1000, 'g');
 
       const response = await request(app)
         .post('/api/applied-weeks')
@@ -68,7 +68,7 @@ describe('Applied Weeks API', () => {
           weekNumber: 5,
           adjustments: [
             {
-              productName: 'NZLA Lawn Fertiliser',
+              productName: 'NZLA All Seasons',
               amountDeducted: 200,
               unit: 'g',
               previousQuantity: 1000,
@@ -85,12 +85,12 @@ describe('Applied Weeks API', () => {
         .get('/api/inventory')
         .set(authHeaders);
 
-      const fertilizer = inventoryResponse.body.find((i: any) => i.productName === 'NZLA Lawn Fertiliser');
+      const fertilizer = inventoryResponse.body.find((i: any) => i.productName === 'NZLA All Seasons');
       expect(parseFloat(fertilizer.currentQuantity)).toBe(800);
     });
 
     it('applies Store Zero logic when inventory goes negative', async () => {
-      await createTestInventoryItem(testUser.id, 'NZLA Lawn Kelp', 50, 'ml');
+      await createTestInventoryItem(testUser.id, 'Nurture', 50, 'ml');
 
       const response = await request(app)
         .post('/api/applied-weeks')
@@ -99,7 +99,7 @@ describe('Applied Weeks API', () => {
           weekNumber: 10,
           adjustments: [
             {
-              productName: 'NZLA Lawn Kelp',
+              productName: 'Nurture',
               amountDeducted: 100,
               unit: 'ml',
               previousQuantity: 50,
@@ -114,12 +114,12 @@ describe('Applied Weeks API', () => {
         .get('/api/inventory')
         .set(authHeaders);
 
-      const kelp = inventoryResponse.body.find((i: any) => i.productName === 'NZLA Lawn Kelp');
+      const kelp = inventoryResponse.body.find((i: any) => i.productName === 'Nurture');
       expect(parseFloat(kelp.currentQuantity)).toBe(0);
     });
 
     it('handles unit conversion when deducting (g to kg)', async () => {
-      await createTestInventoryItem(testUser.id, 'NZLA Lawn Fertiliser', 2, 'kg');
+      await createTestInventoryItem(testUser.id, 'NZLA All Seasons', 2, 'kg');
 
       const response = await request(app)
         .post('/api/applied-weeks')
@@ -128,7 +128,7 @@ describe('Applied Weeks API', () => {
           weekNumber: 15,
           adjustments: [
             {
-              productName: 'NZLA Lawn Fertiliser',
+              productName: 'NZLA All Seasons',
               amountDeducted: 500,
               unit: 'g',
               previousQuantity: 2000,
@@ -143,7 +143,7 @@ describe('Applied Weeks API', () => {
         .get('/api/inventory')
         .set(authHeaders);
 
-      const fertilizer = inventoryResponse.body.find((i: any) => i.productName === 'NZLA Lawn Fertiliser');
+      const fertilizer = inventoryResponse.body.find((i: any) => i.productName === 'NZLA All Seasons');
       expect(parseFloat(fertilizer.currentQuantity)).toBe(1.5);
     });
 
@@ -164,7 +164,7 @@ describe('Applied Weeks API', () => {
     });
 
     it('rejects duplicate week application with 409', async () => {
-      await createTestInventoryItem(testUser.id, 'NZLA Lawn Fertiliser', 1000, 'g');
+      await createTestInventoryItem(testUser.id, 'NZLA All Seasons', 1000, 'g');
 
       const firstApply = await request(app)
         .post('/api/applied-weeks')
@@ -173,7 +173,7 @@ describe('Applied Weeks API', () => {
           weekNumber: 35,
           adjustments: [
             {
-              productName: 'NZLA Lawn Fertiliser',
+              productName: 'NZLA All Seasons',
               amountDeducted: 100,
               unit: 'g',
               previousQuantity: 1000,
@@ -191,7 +191,7 @@ describe('Applied Weeks API', () => {
           weekNumber: 35,
           adjustments: [
             {
-              productName: 'NZLA Lawn Fertiliser',
+              productName: 'NZLA All Seasons',
               amountDeducted: 100,
               unit: 'g',
               previousQuantity: 900,
@@ -206,14 +206,14 @@ describe('Applied Weeks API', () => {
       const inventoryCheck = await request(app)
         .get('/api/inventory')
         .set(authHeaders);
-      const fertilizer = inventoryCheck.body.find((i: any) => i.productName === 'NZLA Lawn Fertiliser');
+      const fertilizer = inventoryCheck.body.find((i: any) => i.productName === 'NZLA All Seasons');
       expect(parseFloat(fertilizer.currentQuantity)).toBe(900);
     });
   });
 
   describe('DELETE /api/applied-weeks/:weekNumber (Undo)', () => {
     it('undoes week application and restores inventory', async () => {
-      await createTestInventoryItem(testUser.id, 'NZLA Iron', 500, 'g');
+      await createTestInventoryItem(testUser.id, 'Iron+', 500, 'g');
 
       await request(app)
         .post('/api/applied-weeks')
@@ -222,7 +222,7 @@ describe('Applied Weeks API', () => {
           weekNumber: 25,
           adjustments: [
             {
-              productName: 'NZLA Iron',
+              productName: 'Iron+',
               amountDeducted: 100,
               unit: 'g',
               previousQuantity: 500,
@@ -234,7 +234,7 @@ describe('Applied Weeks API', () => {
       let inventoryCheck = await request(app)
         .get('/api/inventory')
         .set(authHeaders);
-      expect(parseFloat(inventoryCheck.body.find((i: any) => i.productName === 'NZLA Iron').currentQuantity)).toBe(400);
+      expect(parseFloat(inventoryCheck.body.find((i: any) => i.productName === 'Iron+').currentQuantity)).toBe(400);
 
       const undoResponse = await request(app)
         .delete('/api/applied-weeks/25')
@@ -245,7 +245,7 @@ describe('Applied Weeks API', () => {
       inventoryCheck = await request(app)
         .get('/api/inventory')
         .set(authHeaders);
-      expect(parseFloat(inventoryCheck.body.find((i: any) => i.productName === 'NZLA Iron').currentQuantity)).toBe(500);
+      expect(parseFloat(inventoryCheck.body.find((i: any) => i.productName === 'Iron+').currentQuantity)).toBe(500);
 
       const weekCheck = await request(app)
         .get('/api/applied-weeks/25')

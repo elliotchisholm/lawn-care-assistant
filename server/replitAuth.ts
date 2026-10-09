@@ -7,6 +7,14 @@ import type { Express, RequestHandler, ErrorRequestHandler } from "express";
 import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
+import { encryptRefreshToken, decryptRefreshToken, storedSessionUser } from "./sessionTokens";
+import { upgradeLegacySessions } from "./legacySessions";
+
+declare module "express-session" {
+  interface SessionData {
+    passport?: { user: Express.User };
+  }
+}
 
 if (!process.env.REPLIT_DOMAINS) {
   throw new Error("Environment variable REPLIT_DOMAINS not provided");
@@ -28,7 +36,7 @@ export function getSession() {
   const sessionStore = new pgStore({
     conString: process.env.DATABASE_URL,
     createTableIfMissing: false,
-    ttl: sessionTtl,
+    ttl: sessionTtl / 1000,
     tableName: "sessions",
   });
   return session({
@@ -39,6 +47,7 @@ export function getSession() {
     cookie: {
       httpOnly: true,
       secure: true,
+      sameSite: "lax",
       maxAge: sessionTtl,
     },
   });
@@ -48,10 +57,20 @@ function updateUserSession(
   user: any,
   tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers
 ) {
-  user.claims = tokens.claims();
-  user.access_token = tokens.access_token;
-  user.refresh_token = tokens.refresh_token;
-  user.expires_at = user.claims?.exp;
+  const claims = tokens.claims();
+  if (claims) {
+    if (user.claims?.sub && user.claims.sub !== claims.sub) throw new Error("Refresh identity mismatch");
+    user.claims = claims;
+  }
+  if (!user.claims?.sub) throw new Error("Missing sign-in identity");
+  // Access tokens are not used by this app. Only retain an encrypted refresh token.
+  delete user.access_token;
+  delete user.refresh_token;
+  if (tokens.refresh_token) {
+    user.encrypted_refresh_token = encryptRefreshToken(tokens.refresh_token, user.claims.sub);
+  }
+  user.expires_at = claims?.exp
+    ?? (tokens.expires_in ? Math.floor(Date.now() / 1000) + tokens.expires_in : user.expires_at);
 }
 
 async function upsertUser(
@@ -69,6 +88,7 @@ async function upsertUser(
 }
 
 export async function setupAuth(app: Express) {
+  await upgradeLegacySessions();
   app.set("trust proxy", 1);
   app.use(getSession());
   app.use(passport.initialize());
@@ -80,10 +100,14 @@ export async function setupAuth(app: Express) {
     tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
     verified: passport.AuthenticateCallback
   ) => {
-    const user = {};
-    updateUserSession(user, tokens);
-    await upsertUser(tokens.claims());
-    verified(null, user);
+    try {
+      const user = {};
+      updateUserSession(user, tokens);
+      await upsertUser(tokens.claims());
+      verified(null, user);
+    } catch (error) {
+      verified(error instanceof Error ? error : new Error("Sign-in verification failed"));
+    }
   };
 
   for (const domain of process.env
@@ -100,8 +124,20 @@ export async function setupAuth(app: Express) {
     passport.use(strategy);
   }
 
-  passport.serializeUser((user: Express.User, cb) => cb(null, user));
-  passport.deserializeUser((user: Express.User, cb) => cb(null, user));
+  passport.serializeUser((user: Express.User, cb) => {
+    try { cb(null, storedSessionUser(user)); } catch (error) { cb(error); }
+  });
+  passport.deserializeUser((user: Express.User, cb) => {
+    try { cb(null, storedSessionUser(user)); } catch (error) { cb(error); }
+  });
+  app.use((req, _res, next) => {
+    // Upgrade legacy sessions as they are used, without signing users out.
+    const stored = req.session?.passport?.user as any;
+    if (stored && ("access_token" in stored || "refresh_token" in stored) && req.user) {
+      req.session.passport!.user = req.user;
+    }
+    next();
+  });
 
   app.get("/api/login", (req, res, next) => {
     passport.authenticate(`replitauth:${req.hostname}`, {
@@ -125,14 +161,23 @@ export async function setupAuth(app: Express) {
   };
   app.get("/api/callback", handleCallback, handleCallbackError);
 
-  app.get("/api/logout", (req, res) => {
-    req.logout(() => {
-      res.redirect(
-        client.buildEndSessionUrl(config, {
-          client_id: process.env.REPL_ID!,
-          post_logout_redirect_uri: `${req.protocol}://${req.hostname}`,
-        }).href
-      );
+  app.get("/api/logout", (_req, res) => {
+    res.set("Allow", "POST").status(405).json({ error: "Use POST to sign out" });
+  });
+  app.post("/api/logout", (req, res, next) => {
+    const domains = process.env.REPLIT_DOMAINS!.split(",").map(domain => domain.trim()).filter(Boolean);
+    const domain = domains.includes(req.hostname) ? req.hostname : domains[0];
+    const logoutUrl = client.buildEndSessionUrl(config, {
+      client_id: process.env.REPL_ID!,
+      post_logout_redirect_uri: `https://${domain}`,
+    }).href;
+    req.logout(error => {
+      if (error) return next(error);
+      req.session.destroy(error => {
+        if (error) return next(error);
+        res.clearCookie("connect.sid", { path: "/", httpOnly: true, secure: true, sameSite: "lax" });
+        res.redirect(303, logoutUrl);
+      });
     });
   });
 }
@@ -140,7 +185,7 @@ export async function setupAuth(app: Express) {
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
   const user = req.user as any;
 
-  if (!req.isAuthenticated() || !user.expires_at) {
+  if (!req.isAuthenticated() || !user?.expires_at) {
     return res.status(401).json({ message: "Unauthorized" });
   }
 
@@ -149,17 +194,21 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
     return next();
   }
 
-  const refreshToken = user.refresh_token;
-  if (!refreshToken) {
+  if (!user.encrypted_refresh_token) {
     res.status(401).json({ message: "Unauthorized" });
     return;
   }
 
   try {
+    const refreshToken = decryptRefreshToken(user.encrypted_refresh_token, user.claims.sub);
     const config = await getOidcConfig();
     const tokenResponse = await client.refreshTokenGrant(config, refreshToken);
     updateUserSession(user, tokenResponse);
-    return next();
+    req.session.passport!.user = storedSessionUser(user);
+    return req.session.save(error => {
+      if (error) return next(error);
+      next();
+    });
   } catch (error) {
     res.status(401).json({ message: "Unauthorized" });
     return;

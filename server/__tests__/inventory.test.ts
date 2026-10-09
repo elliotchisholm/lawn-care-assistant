@@ -41,7 +41,7 @@ describe('Inventory API', () => {
     });
 
     it('returns user inventory items', async () => {
-      await createTestInventoryItem(testUser.id, 'NZLA Lawn Fertiliser', 500, 'g');
+      await createTestInventoryItem(testUser.id, 'NZLA All Seasons', 500, 'g');
       await createTestInventoryItem(testUser.id, 'NZLA Liquid Fertiliser', 250, 'ml');
 
       const response = await request(app)
@@ -50,7 +50,7 @@ describe('Inventory API', () => {
 
       expect(response.status).toBe(200);
       expect(response.body).toHaveLength(2);
-      expect(response.body.map((i: any) => i.productName)).toContain('NZLA Lawn Fertiliser');
+      expect(response.body.map((i: any) => i.productName)).toContain('NZLA All Seasons');
       expect(response.body.map((i: any) => i.productName)).toContain('NZLA Liquid Fertiliser');
     });
   });
@@ -61,26 +61,26 @@ describe('Inventory API', () => {
         .post('/api/inventory')
         .set(authHeaders)
         .send({
-          productName: 'NZLA Lawn Kelp',
+          productName: 'Nurture',
           currentQuantity: '100',
           unit: 'ml'
         });
 
       expect(response.status).toBe(201);
-      expect(response.body.productName).toBe('NZLA Lawn Kelp');
+      expect(response.body.productName).toBe('Nurture');
       expect(response.body.currentQuantity).toBe('100');
       expect(response.body.unit).toBe('ml');
       expect(response.body.userId).toBe(testUser.id);
     });
 
     it('upserts existing product with same name', async () => {
-      await createTestInventoryItem(testUser.id, 'NZLA Lawn Kelp', 100, 'ml');
+      await createTestInventoryItem(testUser.id, 'Nurture', 100, 'ml');
 
       const response = await request(app)
         .post('/api/inventory')
         .set(authHeaders)
         .send({
-          productName: 'NZLA Lawn Kelp',
+          productName: 'Nurture',
           currentQuantity: '200',
           unit: 'ml'
         });
@@ -92,7 +92,7 @@ describe('Inventory API', () => {
         .get('/api/inventory')
         .set(authHeaders);
 
-      const kelpItems = listResponse.body.filter((i: any) => i.productName === 'NZLA Lawn Kelp');
+      const kelpItems = listResponse.body.filter((i: any) => i.productName === 'Nurture');
       expect(kelpItems).toHaveLength(1);
     });
 
@@ -180,20 +180,20 @@ describe('Inventory API', () => {
 
   describe('GET /api/inventory/product/:productName', () => {
     it('returns specific inventory item by product name', async () => {
-      await createTestInventoryItem(testUser.id, 'NZLA Iron', 200, 'g');
+      await createTestInventoryItem(testUser.id, 'Iron+', 200, 'g');
 
       const response = await request(app)
-        .get(`/api/inventory/product/${encodeURIComponent('NZLA Iron')}`)
+        .get(`/api/inventory/product/${encodeURIComponent('Iron+')}`)
         .set(authHeaders);
 
       expect(response.status).toBe(200);
-      expect(response.body.productName).toBe('NZLA Iron');
+      expect(response.body.productName).toBe('Iron+');
       expect(response.body.currentQuantity).toBe('200');
     });
 
     it('returns 404 for non-existent product', async () => {
       const response = await request(app)
-        .get(`/api/inventory/product/${encodeURIComponent('Non Existent Product')}`)
+        .get(`/api/inventory/product/${encodeURIComponent('Root Health')}`)
         .set(authHeaders);
 
       expect(response.status).toBe(404);

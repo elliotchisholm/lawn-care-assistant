@@ -73,6 +73,14 @@ describe('Header', () => {
       expect(screen.getByTestId('button-logout')).toBeInTheDocument();
     });
 
+    it('submits logout as a POST instead of a cross-site-triggerable GET', () => {
+      render(<Header />);
+      const button = screen.getByTestId('button-logout');
+      expect(button).toHaveAttribute('type', 'submit');
+      expect(button.closest('form')).toHaveAttribute('method', 'post');
+      expect(button.closest('form')).toHaveAttribute('action', '/api/logout');
+    });
+
     it('does not show login button', () => {
       render(<Header />);
       expect(screen.queryByTestId('button-login')).not.toBeInTheDocument();

@@ -10,7 +10,7 @@ echo "Checking types..."
 npm run check
 
 echo "Checking dependency security and SSO regressions..."
-npm exec -- vitest run server/__tests__/dependency-security.test.ts server/__tests__/sso.test.ts
+npm exec -- vitest run server/__tests__/dependency-security.test.ts server/__tests__/sso.test.ts server/__tests__/session-tokens.test.ts server/__tests__/security-middleware.test.ts server/__tests__/legacy-sessions.test.ts
 
 echo "Building the application..."
 npm run build
