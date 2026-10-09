@@ -1,12 +1,18 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import express from "express";
 import request from "supertest";
-import { applySecurity, requireAdmin, handleRequestError } from "../security";
+import { applySecurity, applyRateLimits, requireAdmin, handleRequestError } from "../security";
 
 function testApp(limits = { api: 300, login: 20, writes: 100 }) {
   const app = express();
   app.set("env", "production");
   applySecurity(app, limits);
+  app.use((req, _res, next) => {
+    // Test-only simulation of an identity already verified by Passport.
+    if (req.get("X-Test-Subject")) req.user = { claims: { sub: req.get("X-Test-Subject") } } as any;
+    next();
+  });
+  applyRateLimits(app);
   app.use(express.json({ limit: "32kb" }));
   app.get("/api/test", (_req, res) => res.json({ ok: true }));
   app.get("/api/login", (_req, res) => res.redirect("/"));
@@ -64,6 +70,29 @@ describe("HTTP security protections", () => {
     const response = await request(app).get("/api/test");
     expect(response.status).toBe(429);
     expect(response.headers["retry-after"]).toBeDefined();
+  });
+
+  it("keeps different accounts behind the same proxy in separate buckets", async () => {
+    const app = testApp({ api: 1, login: 20, writes: 100 });
+    await request(app).get("/api/test").set("X-Test-Subject", "first").expect(200);
+    await request(app).get("/api/test").set("X-Test-Subject", "first").expect(429);
+    await request(app).get("/api/test").set("X-Test-Subject", "second").expect(200);
+  });
+
+  it("resolves the client beyond internal proxies and ignores a spoofed prefix", async () => {
+    const app = testApp({ api: 1, login: 20, writes: 100 });
+    await request(app).get("/api/test")
+      .set("X-Forwarded-For", "203.0.113.22, 198.51.100.10, 10.1.2.3, 127.0.0.1").expect(200);
+    await request(app).get("/api/test")
+      .set("X-Forwarded-For", "203.0.113.99, 198.51.100.10, 10.1.2.3, 127.0.0.1").expect(429);
+    await request(app).get("/api/test")
+      .set("X-Forwarded-For", "198.51.100.11, 10.1.2.3, 127.0.0.1").expect(200);
+  });
+
+  it("groups IPv6 client addresses by subnet so rotating addresses cannot evade limits", async () => {
+    const app = testApp({ api: 1, login: 20, writes: 100 });
+    await request(app).get("/api/test").set("X-Forwarded-For", "2001:db8::1, 127.0.0.1").expect(200);
+    await request(app).get("/api/test").set("X-Forwarded-For", "2001:db8::2, 127.0.0.1").expect(429);
   });
 
   it("limits login requests separately", async () => {

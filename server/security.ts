@@ -1,6 +1,7 @@
 import type { Express, RequestHandler, ErrorRequestHandler } from "express";
 import helmet from "helmet";
-import { rateLimit } from "express-rate-limit";
+import { rateLimit, ipKeyGenerator } from "express-rate-limit";
+import { createHash } from "node:crypto";
 
 export const requireAdmin: RequestHandler = (req, res, next) => {
   const subject = (req.user as any)?.claims?.sub;
@@ -38,7 +39,12 @@ export const handleRequestError: ErrorRequestHandler = (error, _req, res, _next)
 };
 
 export function applySecurity(app: Express, limits = { api: 300, login: 20, writes: 100 }) {
-  app.set("trust proxy", 1);
+  // Trust known internal proxy networks, not an assumed hop count or arbitrary
+  // forwarded addresses. Stop at the first untrusted address in the chain.
+  const proxies = (process.env.TRUSTED_PROXY_CIDRS ?? "loopback,linklocal,uniquelocal")
+    .split(",").map(value => value.trim()).filter(Boolean);
+  app.set("trust proxy", proxies);
+  app.set("rateLimitConfig", limits);
   const development = app.get("env") === "development";
   app.use(helmet({
     frameguard: false,
@@ -55,14 +61,53 @@ export function applySecurity(app: Express, limits = { api: 300, login: 20, writ
       },
     },
   }));
+  app.use((_req, res, next) => {
+    res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+    next();
+  });
+  if (development) {
+    let inspected = 0;
+    app.use((req, _res, next) => {
+      if (inspected < 3 && req.path === "/api/health" && req.get("X-Proxy-Check") === "1") {
+        inspected++;
+        const fingerprint = (ip: string) => createHash("sha256").update(ip).digest("hex").slice(0, 16);
+        const networkType = (ip: string) => {
+          const address = ip.trim().replace(/^::ffff:/, "");
+          if (address === "::1" || address.startsWith("127.")) return "loopback";
+          if (/^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(address)) return "private";
+          return "other";
+        };
+        console.info(JSON.stringify({ proxyCheck: {
+          effective: fingerprint(req.ip ?? ""),
+          forwarded: (req.get("X-Forwarded-For") ?? "").split(",").map(ip => fingerprint(ip.trim())),
+          networks: (req.get("X-Forwarded-For") ?? "").split(",").map(networkType),
+        } }));
+      }
+      next();
+    });
+  }
+  app.use("/api", requireSameOrigin);
+}
+
+/** Install after Passport has verified the session, but before auth/API routes. */
+export function applyRateLimits(app: Express) {
+  if (app.get("rateLimitsInstalled")) return;
+  app.set("rateLimitsInstalled", true);
+  const limits = app.get("rateLimitConfig") ?? { api: 300, login: 20, writes: 100 };
   const limiter = (limit: number) => rateLimit({
     windowMs: 15 * 60 * 1000,
     limit,
     standardHeaders: "draft-7",
     legacyHeaders: false,
     message: { error: "Too many requests. Please try again later." },
+    keyGenerator: req => {
+      const subject = (req.user as any)?.claims?.sub;
+      return typeof subject === "string" && subject
+        ? `user:${subject}`
+        : `ip:${ipKeyGenerator(req.ip ?? req.socket.remoteAddress ?? "unknown")}`;
+    },
   });
-  app.use("/api", requireSameOrigin, limiter(limits.api));
+  app.use("/api", limiter(limits.api));
   app.use("/api/login", limiter(limits.login));
   const writeLimiter = limiter(limits.writes);
   app.use("/api", (req, res, next) => {

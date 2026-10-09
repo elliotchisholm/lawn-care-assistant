@@ -21,6 +21,9 @@
 - Legacy session rows are upgraded at server startup and when used. The startup
   upgrade uses compare-and-swap to preserve concurrent session renewal. Cookies,
   expiry, accounts, and inventory are unchanged; no sessions are deleted.
+  Malformed legacy authentication payloads are removed without discarding other
+  session data; only those invalid sessions need to sign in again. Maintenance
+  failures are reported without sensitive details and no longer stop server boot.
 - Logout uses a same-origin POST, destroys the local session, clears its cookie,
   and redirects only to a configured Replit domain.
 - Sign-in does not force repeated consent or restart automatically after failure.
@@ -34,9 +37,21 @@
   callbacks remain allowed.
 - JSON and form bodies are limited to 32 KiB. Invalid requests return generic
   errors without exposing exception details or throwing after a response.
-- Basic per-IP, per-instance rate limits: 300 API requests, 20 login requests,
-  and 100 write requests per 15 minutes. These are not a distributed/global
-  limiter across autoscaled instances.
+- Per-instance rate limits: 300 API requests, 20 login requests, and 100 write
+  requests per 15 minutes. Verified accounts have separate buckets; anonymous
+  requests use the resolved client IP with IPv6 subnet grouping. Limiters run
+  after Passport restores the session and before authentication/API handlers.
+  These are not a distributed/global limiter across autoscaled instances.
+- Proxy trust uses internal loopback, link-local, and private network ranges,
+  not a fixed hop count or unrestricted trust. `TRUSTED_PROXY_CIDRS` can override
+  this comma-separated list for a different hosting network. The proxy must
+  sanitize forwarding headers and prevent untrusted access to trusted networks.
+  Preview measurements confirmed that the old one-hop setting selected loopback
+  and that the gateway removed supplied spoofed forwarding headers. Repeat a
+  two-network remaining-budget check on production after publishing; the
+  published proxy topology is not established by preview measurements alone.
+- Unknown `/api` routes return JSON 404 responses before the SPA fallback.
+  Permissions-Policy disables unused camera, microphone, and geolocation access.
 - Public health checks return only healthy/unhealthy status, not memory,
   uptime, row counts, or internal errors.
 
@@ -56,3 +71,22 @@ boundaries. The browser sign-in journey was attempted but blocked because the
 test issuer did not activate; it redirected to the real Replit login provider.
 No credentials were entered or production accounts tested. Public rendering and
 live unauthenticated HTTP protections were verified separately.
+
+## Inventory application consistency
+
+Apply and undo use Neon HTTP batch transactions with an owning-user row lock.
+Week reservation, stock deductions, and the application record commit together.
+Duplicate applies return 409 with no additional deductions; duplicate undos
+restore stock only once. A failed later adjustment rolls back earlier changes.
+Undo adds back actual consumption, converting to the current stock unit, rather
+than overwriting subsequent purchases or other weeks' deductions.
+
+Database-backed regressions cover concurrent applies, concurrent undos,
+different weeks, repeated products, unit changes, and rollback after a SQL error.
+The current endpoint's batch error envelopes and decoded booleans are normalized
+before the Neon driver parses them. Genuine errors are preserved, not treated as
+empty successful results.
+
+Rotating `SESSION_SECRET` invalidates signed cookies and encrypted refresh
+tokens. Treat rotation as a planned reauthentication event, not a no-impact
+configuration change.

@@ -32,6 +32,19 @@ Prefer an official patched upstream release when one becomes available. Before
 changing this alias, verify the replacement's guards and the consumer tests;
 do not restore unpatched upstream `braces` just to remove the alias.
 
+The fork remains a third-party maintenance dependency; integrity pinning does
+not establish future maintainer trust. Its installed entry point and helpers
+have no install hooks or network, filesystem, environment, or subprocess
+access. Keep the regression tests and review any future version before updating.
+
+## Portable installs
+
+Project `.npmrc` enables `omit-lockfile-registry-resolved`. The lockfile keeps
+all package versions and integrity hashes but omits registry tarball URLs.
+This lets installs use the configured registry (the Replit firewall here, the
+standard npm registry on an ordinary local checkout) instead of requiring an
+internal Replit hostname. No pinned version or integrity hash was changed.
+
 ## Verification
 
 Run `npx vitest run server/__tests__/dependency-security.test.ts` for regression

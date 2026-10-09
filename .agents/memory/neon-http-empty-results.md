@@ -14,3 +14,14 @@ The current endpoint can also coerce a bound SQL null parameter into an empty st
 **Why:** A duplicate-email fallback wrote an empty string rather than SQL null, which would block subsequent distinct subjects on the unique email constraint. A database-side `IS NULL` assertion distinguished storage semantics from a nullable field's returned representation.
 
 **How to apply:** For nullable unique fields, test more than one absent value and verify null semantics inside SQL. Keep workarounds narrow instead of changing unrelated database results.
+
+A rejected SDK promise is not proof that a write was rolled back. Verify persisted
+state before assuming retries are safe.
+
+**Why:** A batch committed successfully, then response parsing failed in the
+client. Retrying a non-idempotent deduction after that error could consume stock
+again. The endpoint can also lose the original SQLSTATE when reporting rollback.
+
+**How to apply:** For new transactional writes, test persisted data after an
+intentional SQL failure, duplicate retries, and concurrent requests. A transaction
+ID check or an HTTP/SDK error alone is insufficient evidence of atomic rollback.
