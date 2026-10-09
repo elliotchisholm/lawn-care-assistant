@@ -8,3 +8,6 @@ vite.config.ts.*
 # Uploaded private security reviews must not enter this public repository.
 /attached_assets/Pasted-Fixes-confirmed-in-code-*.txt
 /attached_assets/Pasted-IDOR-no-cross-user-access-found-*.txt
+
+# Private screenshot supplied while investigating authentication behavior.
+/attached_assets/image_1791585948879.png

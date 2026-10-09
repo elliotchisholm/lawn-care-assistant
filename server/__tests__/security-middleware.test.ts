@@ -42,6 +42,9 @@ describe("HTTP security protections", () => {
     expect(response.headers["content-security-policy"]).toContain("https://replit.com");
     expect(response.headers["content-security-policy"].match(/script-src [^;]+/)?.[0])
       .not.toContain("'unsafe-inline'");
+    expect(response.headers["referrer-policy"]).toBe("same-origin");
+    expect(response.headers["content-security-policy"].match(/form-action [^;]+/)?.[0])
+      .toBe("form-action 'self' https://replit.com");
   });
 
   it("blocks cross-origin state changes", async () => {
