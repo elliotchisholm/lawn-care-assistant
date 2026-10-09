@@ -1,0 +1,31 @@
+Fixes confirmed in code
+Metrics access: /api/metrics now runs isAuthenticated, then requireAdmin. Access is limited to the user IDs in ADMIN_USER_IDS, and an unset variable denies everyone (security.ts:5). The same file’s error handler no longer leaks internals.
+Tokens in sessions: access tokens are deleted. The refresh token is encrypted with AES-256-GCM, bound to the user’s sub, and the key is derived from SESSION_SECRET (sessionTokens.ts). Existing sessions are upgraded at startup without signing anyone out.
+Cookie and CSRF: SameSite=Lax is set. All non-GET /api requests are blocked if the Origin header doesn’t match your domains or Sec-Fetch-Site is cross-site.
+Logout: it is now POST-only, and the redirect target is taken from REPLIT_DOMAINS instead of the request host.
+Callback error handling: the verify step has a try/catch, and callback failures redirect with a generic error and no provider details.
+Email collisions: a unique-email conflict now saves the new account with a null email instead of failing the login, and it never links two accounts.
+Input validation (shared/validation.ts):
+Product names: whitelisted.
+Units and quantities: units are an enum, and quantities are non-negative with a maximum.
+Notes and lawn size: notes is capped at 2000 characters and lawn size at 1,000,000.
+Adjustments: at most 50 entries, all non-negative.
+Request bodies: limited to 32kb.
+Hardening: helmet, a CSP and rate limits (login 20, API 300, writes 100 per 15 minutes) are added. /api/health returns only a status.
+IDOR: no changes to ownership checks, and the earlier conclusion stands.
+New and remaining findings
+Medium, verify the rate limiter on launch day. The limiter is in memory and keyed by IP with trust proxy set to 1. If Replit’s proxy chain makes every request share one client IP, the whole user base shares one bucket. That would mean 20 logins and 300 API calls per 15 minutes in total.
+Check: log req.ip against X-Forwarded-For on the live app. Alternatively, from a phone on mobile data, check whether the RateLimit remaining count continues from your laptop’s count.
+Medium, a third-party fork replaces braces. package.json overrides braces with @dieub/braces-depth-guard@3.0.3-pn.3.
+Provenance: a single personal maintainer published it on 2026-10-03, six days ago.
+Code review: I diffed it against braces@3.0.3. It only adds nesting-depth and length limits, with no install scripts and no network, file or environment access. The code is clean.
+Remaining risk: provenance and maintenance. npm audit shows 0 vulnerabilities only because of this override.
+Lockfile: the lockfile pins an integrity hash, so the contents can’t change. It also resolves from http://package-firewall.replit.internal, so a local npm ci will likely fail.
+Decision for you: keep it with the pin, or drop the override and accept the original advisory. I can’t tell from here which advisory triggered it.
+Low, applying a week isn’t transactional. markWeekAsApplied checks for an existing application and then deducts inventory in separate queries. Two simultaneous requests could both pass the check and deduct twice, and a later undo would restore the wrong amount. It affects only that user’s own data. Wrap it in a database transaction.
+Low, startup can fail on odd legacy sessions. upgradeLegacySessions runs inside setupAuth with no error handling (legacySessions.ts). A malformed old session row would stop the app from booting. Wrap it in a try/catch and log the failure.
+Low, unknown /api/* routes still return the SPA HTML with a 200. Add a JSON 404 catch-all after the API routes.
+Info: Permissions-Policy isn’t set, and rotating SESSION_SECRET will force everyone to log in again, because it also encrypts the refresh tokens.
+Before announcing
+Rate limiter: resolve item 1.
+Two-account test: it’s still the one check I can’t do from here. Log in as user A, copy an inventory item ID, then try PUT and DELETE on it as user B and expect 404.
