@@ -1,0 +1,26 @@
+IDOR: no cross-user access found
+Identity: userId always comes from the OIDC sub claim in the session, never from the URL or request body. This is the same pattern at every route in routes.ts.
+Row ownership: every query on inventory and applied weeks filters by userId. Update and delete filter on id AND userId (storage.ts:110, storage.ts:121). Another user’s row UUID returns 404.
+Create routes: userId is spread after req.body (routes.ts:128, routes.ts:220), so a client can’t override it. updateInventorySchema omits userId, so a row can’t be reassigned.
+Black-box check: the live site matched the code. The deployed app shows the same routes, and the user-specific ones return 401 when logged out.
+Not tested: I haven’t run a two-account test against the live site. That is the real confirmation, so please do it.
+OIDC-specific findings
+Medium, /api/metrics is open to any Replit account. The comment says “admin only” at routes.ts:46, but it only checks isAuthenticated. Because anyone with a free Replit account can sign in, the total user count, inventory counts and average lawn size are effectively public.
+Fix: compare req.user.claims.sub against an ADMIN_USER_IDS env var, or delete the route.
+Medium, OAuth tokens are stored in the sessions table. updateUserSession saves access_token and refresh_token, and serializeUser writes the whole user object to Postgres (replitAuth.ts:47, replitAuth.ts:103). The scope includes offline_access, so the refresh tokens are long-lived. A database leak would hand out usable tokens.
+Fix: serialize only claims and expires_at. Keep tokens server-side only if you need refresh.
+Medium, no SameSite on the session cookie. replitAuth.ts:39 sets only httpOnly and secure, which matches the live cookie. That leaves state-changing requests open to cross-site forgery.
+Fix: add sameSite: "lax".
+Low, GET /api/logout can be triggered cross-site. Any page can log a user out with an image tag. Make logout a POST. The post_logout_redirect_uri is built from req.hostname (replitAuth.ts:125). Build it from REPLIT_DOMAINS instead.
+Low, the verify callback has no error handling. upsertUser can throw, for example on a unique-email collision. It is awaited without a try/catch in replitAuth.ts:79. That fails that user’s login and risks an unhandled rejection. Wrap it and return verified(err).
+Low, a unique-email collision can lock out a user. users.email is unique but upserts conflict on id. If a new Replit account takes an email that an old row still holds, that login fails.
+Carried over from before:
+Unvalidated productName and negative amounts: these allow junk rows, but only in the user’s own data.
+Unbounded notes and lawnSize: add limits.
+Public /api/health: it leaks memory and uptime.
+No helmet or rate limiting: confirmed absent in server/index.ts and package.json.
+No stored XSS sinks: dangerouslySetInnerHTML appears only in the chart UI library code.
+Before announcing
+Fix findings 1, 2 and 3. Each is small.
+Run the two-account test. Log in as user A, copy an inventory item ID, then try PUT and DELETE on it as user B and confirm 404.
+Add helmet and basic rate limiting.

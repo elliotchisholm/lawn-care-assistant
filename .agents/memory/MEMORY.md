@@ -1,3 +1,4 @@
 - [Neon HTTP empty results](neon-http-empty-results.md) — upgraded Drizzle may need explicit handling when the Neon endpoint returns null or omits mutation rows.
 - [SSO consent expectations](sso-consent-expectations.md) — fix repeated Replit/Google approvals, not just fresh sign-in.
 - [Runtime dependency versions](dependency-runtime-versions.md) — installed packages can lag manifest ranges; verify actual versions before using version-specific APIs.
+- [Security replacement verification](security-replacement-verification.md) — a renamed dependency can pass an audit without fixing the original flaw; verify the vulnerable behavior.
