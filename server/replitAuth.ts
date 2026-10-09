@@ -3,7 +3,7 @@ import { Strategy, type VerifyFunction } from "openid-client/passport";
 
 import passport from "passport";
 import session from "express-session";
-import type { Express, RequestHandler } from "express";
+import type { Express, RequestHandler, ErrorRequestHandler } from "express";
 import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
@@ -105,17 +105,25 @@ export async function setupAuth(app: Express) {
 
   app.get("/api/login", (req, res, next) => {
     passport.authenticate(`replitauth:${req.hostname}`, {
-      prompt: "login consent",
+      // Let the provider reuse its session and previously granted consent.
       scope: ["openid", "email", "profile", "offline_access"],
     })(req, res, next);
   });
 
-  app.get("/api/callback", (req, res, next) => {
+  const handleCallbackError: ErrorRequestHandler = (_error, _req, res, _next) => {
+    // Do not expose provider errors, authorization codes, or tokens to the browser.
+    console.error("Sign-in callback failed; authentication did not complete.");
+    res.redirect("/?auth_error=sign_in_failed");
+  };
+
+  const handleCallback: RequestHandler = (req, res, next) => {
     passport.authenticate(`replitauth:${req.hostname}`, {
       successReturnToOrRedirect: "/",
-      failureRedirect: "/api/login",
+      // Never automatically restart OAuth after denial or failed verification.
+      failureRedirect: "/?auth_error=sign_in_failed",
     })(req, res, next);
-  });
+  };
+  app.get("/api/callback", handleCallback, handleCallbackError);
 
   app.get("/api/logout", (req, res) => {
     req.logout(() => {
