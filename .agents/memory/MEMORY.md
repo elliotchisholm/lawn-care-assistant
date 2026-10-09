@@ -2,3 +2,4 @@
 - [SSO consent expectations](sso-consent-expectations.md) — fix repeated Replit/Google approvals, not just fresh sign-in.
 - [Runtime dependency versions](dependency-runtime-versions.md) — installed packages can lag manifest ranges; verify actual versions before using version-specific APIs.
 - [Security replacement verification](security-replacement-verification.md) — a renamed dependency can pass an audit without fixing the original flaw; verify the vulnerable behavior.
+- [GitHub push authentication](github-push-auth.md) — native Git credentials and the GitHub OAuth integration can differ; verify access before requesting reconnection.
