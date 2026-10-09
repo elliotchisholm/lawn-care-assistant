@@ -11,11 +11,15 @@ export async function upgradeLegacySessions(onlySessionId?: string): Promise<num
       OR (${sessions.sess}->'passport'->'user') ? 'refresh_token')`;
   const filter = onlySessionId ? and(legacy, eq(sessions.sid, onlySessionId)) : legacy;
   let examined = 0;
+  let invalid = 0;
   while (true) {
     // The endpoint's empty-row compatibility issue does not affect COUNT.
     const [result] = await db.select({ remaining: count() }).from(sessions).where(filter);
     if (!result) throw new Error("Unable to check legacy sessions");
-    if (result.remaining === 0) return examined;
+    if (result.remaining === 0) {
+      if (invalid) console.warn(`Removed malformed authentication data from ${invalid} legacy sessions; valid sessions were preserved.`);
+      return examined;
+    }
     const batch = await db.select().from(sessions).where(filter).limit(100).catch(error => {
       // Another instance may finish the same batch between COUNT and SELECT.
       if (error?.cause instanceof TypeError
@@ -25,9 +29,20 @@ export async function upgradeLegacySessions(onlySessionId?: string): Promise<num
     if (!batch.length) continue;
     for (const row of batch) {
       const original = row.sess as Record<string, any>;
+      const user = original.passport.user;
+      const passport = { ...original.passport };
+      if (typeof user.claims?.sub !== "string" || !user.claims.sub.trim()
+        || (user.refresh_token != null && typeof user.refresh_token !== "string")) {
+        // An invalid identity cannot safely bind an encrypted token. Keep the
+        // session's other data, but require this invalid session to sign in again.
+        delete passport.user;
+        invalid++;
+      } else {
+        passport.user = storedSessionUser(user);
+      }
       const upgraded = {
         ...original,
-        passport: { ...original.passport, user: storedSessionUser(original.passport.user) },
+        passport,
       };
       // Compare-and-swap avoids overwriting a session concurrently renewed by another instance.
       await db.update(sessions).set({ sess: upgraded }).where(and(

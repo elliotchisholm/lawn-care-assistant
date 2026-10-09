@@ -2,6 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import express, { type Express } from "express";
 import request from "supertest";
 import { decryptRefreshToken, encryptRefreshToken } from "../sessionTokens";
+import { upgradeLegacySessions } from "../legacySessions";
 
 const auth = vi.hoisted(() => ({
   mode: "success" as "success" | "denied" | "error",
@@ -171,6 +172,14 @@ describe("SSO redirect policy", () => {
     expect(req.session.passport.user.expires_at).toBeGreaterThan(Math.floor(Date.now() / 1000));
     expect(decryptRefreshToken(req.session.passport.user.encrypted_refresh_token, "test-sub")).toBe("new-refresh");
     expect(req.session.passport.user).not.toHaveProperty("access_token");
+  });
+
+  it("does not block startup when legacy-session maintenance fails", async () => {
+    vi.mocked(upgradeLegacySessions).mockRejectedValueOnce(new Error("database temporarily unavailable"));
+    const { setupAuth } = await vi.importActual<typeof import("../replitAuth")>("../replitAuth");
+    const freshApp = express();
+    await expect(setupAuth(freshApp)).resolves.toBeUndefined();
+    await request(freshApp).get("/api/login").expect(302);
   });
 
   it("rejects GET logout without ending the session", async () => {

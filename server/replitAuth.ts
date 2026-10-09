@@ -9,6 +9,7 @@ import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
 import { encryptRefreshToken, decryptRefreshToken, storedSessionUser } from "./sessionTokens";
 import { upgradeLegacySessions } from "./legacySessions";
+import { applyRateLimits } from "./security";
 
 declare module "express-session" {
   interface SessionData {
@@ -88,8 +89,13 @@ async function upsertUser(
 }
 
 export async function setupAuth(app: Express) {
-  await upgradeLegacySessions();
-  app.set("trust proxy", 1);
+  try {
+    await upgradeLegacySessions();
+  } catch {
+    // Sessions are also upgraded when used. A failed maintenance pass must not
+    // block server boot; report it without logging session contents or tokens.
+    console.error("Legacy session maintenance failed; on-use encryption remains enabled.");
+  }
   app.use(getSession());
   app.use(passport.initialize());
   app.use(passport.session());
@@ -138,6 +144,8 @@ export async function setupAuth(app: Express) {
     }
     next();
   });
+
+  applyRateLimits(app);
 
   app.get("/api/login", (req, res, next) => {
     passport.authenticate(`replitauth:${req.hostname}`, {

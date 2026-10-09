@@ -5,12 +5,14 @@ import { insertInventorySchema, updateInventorySchema, insertAppliedWeekSchema, 
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { z } from "zod";
 import { parsePackageSizes } from "./parsePackageSizes";
-import { requireAdmin } from "./security";
+import { requireAdmin, applyRateLimits } from "./security";
 import { lawnSizeSchema, productNameSchema } from "@shared/validation";
+import { WeekAlreadyAppliedError } from "./weekApplications";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication middleware
   await setupAuth(app);
+  applyRateLimits(app);
 
   // Enhanced health check endpoint (Phase 1 observability)
   app.get('/api/health', async (_req, res) => {
@@ -214,7 +216,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(appliedWeek);
     } catch (error) {
       console.error("Error marking week as applied:", error);
-      if (error instanceof z.ZodError) {
+      if (error instanceof WeekAlreadyAppliedError) {
+        res.status(409).json({ error: error.message });
+      } else if (error instanceof z.ZodError) {
         res.status(400).json({ error: "Invalid data", details: error.errors });
       } else {
         res.status(500).json({ error: "Failed to mark week as applied" });
@@ -290,6 +294,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error fetching package sizes:", error);
       res.status(500).json({ error: "Failed to fetch package sizes" });
     }
+  });
+
+  app.use("/api", (_req, res) => {
+    res.status(404).json({ error: "API route not found" });
   });
 
   const httpServer = createServer(app);
