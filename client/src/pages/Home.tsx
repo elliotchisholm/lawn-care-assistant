@@ -23,6 +23,24 @@ export default function Home() {
   const [lawnSize, setLawnSize] = useState(100);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const { toast } = useToast();
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("auth_error") !== "sign_in_failed") return;
+
+    toast({
+      title: "Sign-in wasn't completed",
+      description: "Use Log in to try again. If it keeps failing, please try again later.",
+      variant: "destructive",
+    });
+    params.delete("auth_error");
+    const search = params.toString();
+    window.history.replaceState(
+      window.history.state,
+      "",
+      `${window.location.pathname}${search ? `?${search}` : ""}${window.location.hash}`,
+    );
+  }, [toast]);
+
   const currentDate = new Date();
   const yearStart = startOfYear(currentDate);
   const currentWeekNumber = differenceInWeeks(currentDate, yearStart) + 1;
