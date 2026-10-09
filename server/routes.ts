@@ -5,6 +5,8 @@ import { insertInventorySchema, updateInventorySchema, insertAppliedWeekSchema, 
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { z } from "zod";
 import { parsePackageSizes } from "./parsePackageSizes";
+import { requireAdmin } from "./security";
+import { lawnSizeSchema, productNameSchema } from "@shared/validation";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication middleware
@@ -13,38 +15,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Enhanced health check endpoint (Phase 1 observability)
   app.get('/api/health', async (_req, res) => {
     try {
-      const scheduleCount = await storage.getScheduleCount();
-      const isInitialized = (app.get('isInitialized') as boolean) || false;
-      
-      res.json({
-        status: 'healthy',
-        uptime: process.uptime(),
-        initialized: isInitialized,
-        database: {
-          connected: true,
-          scheduleWeeksLoaded: scheduleCount
-        },
-        memoryUsage: {
-          rss: Math.round(process.memoryUsage().rss / 1024 / 1024),
-          heapTotal: Math.round(process.memoryUsage().heapTotal / 1024 / 1024),
-          heapUsed: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
-          external: Math.round(process.memoryUsage().external / 1024 / 1024),
-          unit: 'MB'
-        },
-        timestamp: new Date().toISOString()
-      });
+      await storage.getScheduleCount();
+      res.json({ status: 'healthy' });
     } catch (error) {
-      res.status(503).json({
-        status: 'error',
-        initialized: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        timestamp: new Date().toISOString()
-      });
+      res.status(503).json({ status: 'unhealthy' });
     }
   });
 
   // Basic metrics endpoint (Phase 1 observability) - admin only
-  app.get('/api/metrics', isAuthenticated, async (_req, res) => {
+  app.get('/api/metrics', isAuthenticated, requireAdmin, async (_req, res) => {
     try {
       const [totalUsers, totalInventoryItems, totalApplicationsMarked, totalUndoOperations, averageLawnSize] = await Promise.all([
         storage.getTotalUsers(),
@@ -66,7 +45,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error fetching metrics:", error);
       res.status(500).json({ 
         error: "Failed to fetch metrics",
-        details: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   });
@@ -87,10 +65,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/user/lawn-size', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const lawnSizeSchema = z.object({
-        lawnSize: z.number().positive().int()
-      });
-      const { lawnSize } = lawnSizeSchema.parse(req.body);
+      const { lawnSize } = z.object({ lawnSize: lawnSizeSchema }).parse(req.body);
       const updatedUser = await storage.updateUserLawnSize(userId, lawnSize);
       if (!updatedUser) {
         res.status(404).json({ error: "User not found" });
@@ -180,9 +155,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get specific inventory item by product name for authenticated user
   app.get("/api/inventory/product/:productName", isAuthenticated, async (req: any, res) => {
     try {
-      const { productName } = req.params;
+      const productName = productNameSchema.parse(req.params.productName);
       const userId = req.user.claims.sub;
-      const item = await storage.getInventoryItem(userId, decodeURIComponent(productName));
+      const item = await storage.getInventoryItem(userId, productName);
       if (!item) {
         res.status(404).json({ error: "Inventory item not found" });
         return;
@@ -190,6 +165,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(item);
     } catch (error) {
       console.error("Error fetching inventory item:", error);
+      if (error instanceof z.ZodError) return res.status(400).json({ error: "Invalid product name" });
       res.status(500).json({ error: "Failed to fetch inventory item" });
     }
   });
@@ -199,8 +175,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Check if a specific week is applied for authenticated user
   app.get("/api/applied-weeks/:weekNumber", isAuthenticated, async (req: any, res) => {
     try {
-      const weekNumber = parseInt(req.params.weekNumber);
-      if (isNaN(weekNumber) || weekNumber < 1 || weekNumber > 52) {
+      const weekNumber = Number(req.params.weekNumber);
+      if (!Number.isInteger(weekNumber) || weekNumber < 1 || weekNumber > 52) {
         res.status(400).json({ error: "Invalid week number" });
         return;
       }
@@ -226,16 +202,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
       
-      // Validate adjustments structure
-      const adjustmentsSchema = z.array(z.object({
-        productName: z.string(),
-        amountDeducted: z.number(),
-        unit: z.string(),
-        previousQuantity: z.number(),
-        newQuantity: z.number()
-      }));
-      
-      const adjustments = adjustmentsSchema.parse(validatedData.adjustments);
+      const adjustments = validatedData.adjustments;
       
       // Apply inventory deductions and create applied week record
       const appliedWeek = await storage.markWeekAsApplied(
@@ -258,8 +225,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Undo a week application (restore inventory)
   app.delete("/api/applied-weeks/:weekNumber", isAuthenticated, async (req: any, res) => {
     try {
-      const weekNumber = parseInt(req.params.weekNumber);
-      if (isNaN(weekNumber) || weekNumber < 1 || weekNumber > 52) {
+      const weekNumber = Number(req.params.weekNumber);
+      if (!Number.isInteger(weekNumber) || weekNumber < 1 || weekNumber > 52) {
         res.status(400).json({ error: "Invalid week number" });
         return;
       }
@@ -292,8 +259,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get specific week schedule
   app.get("/api/schedule/:weekNumber", async (req, res) => {
     try {
-      const weekNumber = parseInt(req.params.weekNumber);
-      if (isNaN(weekNumber) || weekNumber < 1 || weekNumber > 52) {
+      const weekNumber = Number(req.params.weekNumber);
+      if (!Number.isInteger(weekNumber) || weekNumber < 1 || weekNumber > 52) {
         res.status(400).json({ error: "Invalid week number" });
         return;
       }

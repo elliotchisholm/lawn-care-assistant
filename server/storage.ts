@@ -3,6 +3,7 @@ import { NZLA_PRODUCTS } from "@shared/products";
 import { randomUUID } from "crypto";
 import { db } from "./db";
 import { eq, and, count, sql } from "drizzle-orm";
+import { insertInventorySchema } from "@shared/schema";
 
 function isEmptyNeonResultError(error: unknown): boolean {
   if (!(error instanceof Error) || !("cause" in error)) {
@@ -60,13 +61,30 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
+    try {
+      return await this.persistUser(userData);
+    } catch (error) {
+      let cause: any = error;
+      while (cause?.cause) cause = cause.cause;
+      if (userData.email && cause?.code === "23505"
+        && ["users_email_key", "users_email_unique"].includes(cause?.constraint)) {
+        // Email is profile information, not identity. Never link two distinct OIDC subjects.
+        return this.persistUser({ ...userData, email: null });
+      }
+      throw error;
+    }
+  }
+
+  private async persistUser(userData: UpsertUser): Promise<User> {
+    // This endpoint can coerce a bound null to "". A SQL literal preserves nullable uniqueness.
+    const email = userData.email == null ? sql`NULL` : userData.email;
     const [user] = await db
       .insert(users)
-      .values(userData)
+      .values({ ...userData, email })
       .onConflictDoUpdate({
         target: users.id,
         set: {
-          email: userData.email,
+          email,
           firstName: userData.firstName,
           lastName: userData.lastName,
           profileImageUrl: userData.profileImageUrl,
@@ -269,12 +287,12 @@ export class DatabaseStorage implements IStorage {
           ));
       } else {
         // Create inventory item at 0 if it doesn't exist
-        await this.createInventoryItem({
+        await this.createInventoryItem(insertInventorySchema.parse({
           userId,
           productName,
           currentQuantity: "0",
           unit
-        });
+        }));
         
         correctedAdjustments.push({
           productName,

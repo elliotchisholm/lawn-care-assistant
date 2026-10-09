@@ -36,14 +36,15 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { NZLA_PRODUCTS } from "@shared/products";
 import { useAuth } from "@/hooks/useAuth";
+import { quantitySchema, MAX_QUANTITY, MAX_NOTES_LENGTH } from "@shared/validation";
 
 
 // Form validation schemas
 const inventoryFormSchema = z.object({
   productName: z.string().min(1, "Product name is required"),
-  currentQuantity: z.string().min(1, "Quantity is required"),
+  currentQuantity: quantitySchema,
   unit: z.string().min(1, "Unit is required"),
-  notes: z.string().optional(),
+  notes: z.string().max(MAX_NOTES_LENGTH).optional(),
 });
 
 type InventoryFormData = z.infer<typeof inventoryFormSchema>;
@@ -294,6 +295,8 @@ function InventoryForm({ item, open, onOpenChange }: InventoryFormProps) {
                       <Input 
                         placeholder="1000" 
                         type="number"
+                        min="0"
+                        max={MAX_QUANTITY}
                         step="0.01"
                         data-testid="input-quantity"
                         {...field} 
@@ -343,6 +346,7 @@ function InventoryForm({ item, open, onOpenChange }: InventoryFormProps) {
                   <FormControl>
                     <Input 
                       placeholder="Purchased on..." 
+                      maxLength={MAX_NOTES_LENGTH}
                       data-testid="input-notes"
                       {...field} 
                     />
