@@ -111,7 +111,7 @@ export default function Home() {
   };
 
   const handleLogin = () => {
-    window.location.href = "/api/login";
+    window.location.href = "/login";
   };
 
   return (

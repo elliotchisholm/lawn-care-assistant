@@ -13,7 +13,15 @@ export default function Header({ onMenuClick }: HeaderProps) {
   const { user, isAuthenticated } = useAuth();
 
   const handleLogin = () => {
-    window.location.href = "/api/login";
+    window.location.href = "/login";
+  };
+
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/logout", { method: "POST", credentials: "include" });
+    } finally {
+      window.location.href = "/";
+    }
   };
 
   const getUserInitials = (user: User) => {
@@ -97,18 +105,17 @@ export default function Header({ onMenuClick }: HeaderProps) {
                     {getUserInitials(user as User)}
                   </AvatarFallback>
                 </Avatar>
-                <form method="post" action="/api/logout">
-                  <Button
-                    type="submit"
-                    variant="ghost"
-                    size="icon"
-                    data-testid="button-logout"
-                    title="Logout"
-                    className="shrink-0"
-                  >
-                    <LogOut className="h-4 w-4" />
-                  </Button>
-                </form>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleLogout}
+                  data-testid="button-logout"
+                  title="Logout"
+                  className="shrink-0"
+                >
+                  <LogOut className="h-4 w-4" />
+                </Button>
               </>
             ) : (
               <Button 

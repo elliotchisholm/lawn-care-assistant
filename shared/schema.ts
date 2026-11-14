@@ -4,7 +4,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { productNameSchema, quantitySchema, unitSchema, adjustmentsSchema, MAX_NOTES_LENGTH } from "./validation";
 
-// Session storage table for Replit Auth
+// Session storage table for single-user auth
 export const sessions = pgTable(
   "sessions",
   {
@@ -15,7 +15,7 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
-// User storage table for Replit Auth
+// User storage table for single-user auth
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   email: varchar("email").unique(),

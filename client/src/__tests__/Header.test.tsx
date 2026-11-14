@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from './test-utils';
+import { render, screen, fireEvent, waitFor } from './test-utils';
 import Header from '@/components/Header';
 
 const mockUseAuth = vi.fn();
@@ -73,12 +73,17 @@ describe('Header', () => {
       expect(screen.getByTestId('button-logout')).toBeInTheDocument();
     });
 
-    it('submits logout as a POST instead of a cross-site-triggerable GET', () => {
+    it('logs out with a POST to /api/logout instead of a GET', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+      vi.stubGlobal('fetch', fetchMock);
       render(<Header />);
-      const button = screen.getByTestId('button-logout');
-      expect(button).toHaveAttribute('type', 'submit');
-      expect(button.closest('form')).toHaveAttribute('method', 'post');
-      expect(button.closest('form')).toHaveAttribute('action', '/api/logout');
+      fireEvent.click(screen.getByTestId('button-logout'));
+      await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/logout',
+        expect.objectContaining({ method: 'POST' }),
+      );
+      vi.unstubAllGlobals();
     });
 
     it('does not show login button', () => {

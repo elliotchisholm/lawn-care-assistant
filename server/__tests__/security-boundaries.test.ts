@@ -4,10 +4,8 @@ import type { Express } from "express";
 import request from "supertest";
 import { storage } from "../storage";
 import { db } from "../db";
-import { users, sessions } from "@shared/schema";
+import { users } from "@shared/schema";
 import { eq, sql } from "drizzle-orm";
-import { upgradeLegacySessions } from "../legacySessions";
-import { decryptRefreshToken } from "../sessionTokens";
 import { createTestApp, createTestUser, createTestInventoryItem, cleanupTestUser, createAuthenticatedRequest, type TestUser } from "./helpers";
 
 describe("User data security boundaries", () => {
@@ -117,31 +115,5 @@ describe("User data security boundaries", () => {
     const anotherUser = await storage.upsertUser({ id: anotherId, email: userA.email });
     expect(anotherUser.id).toBe(anotherId);
     expect(anotherUser.email).toBeFalsy();
-  });
-
-  it("upgrades existing plaintext session records without deleting the session or changing its cookie", async () => {
-    const sid = `test-session-security-${randomUUID()}`;
-    const expires = new Date(Date.now() + 3600000);
-    const cookie = { httpOnly: true, secure: true, expires: expires.toISOString() };
-    try {
-      await db.insert(sessions).values({
-        sid, expire: expires,
-        sess: { cookie, passport: { user: {
-          claims: { sub: userA.id }, expires_at: Math.floor(expires.getTime() / 1000),
-          access_token: "fake-legacy-access", refresh_token: "fake-legacy-refresh",
-        } } },
-      });
-      expect(await upgradeLegacySessions(sid)).toBe(1);
-      const [record] = await db.select().from(sessions).where(eq(sessions.sid, sid));
-      const data = record.sess as any;
-      expect(data.cookie).toEqual(cookie);
-      expect(data.passport.user.claims.sub).toBe(userA.id);
-      expect(data.passport.user).not.toHaveProperty("access_token");
-      expect(data.passport.user).not.toHaveProperty("refresh_token");
-      expect(decryptRefreshToken(data.passport.user.encrypted_refresh_token, userA.id)).toBe("fake-legacy-refresh");
-      expect(await upgradeLegacySessions(sid)).toBe(0);
-    } finally {
-      await db.delete(sessions).where(eq(sessions.sid, sid));
-    }
   });
 });

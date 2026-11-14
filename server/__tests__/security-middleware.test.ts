@@ -8,7 +8,7 @@ function testApp(limits = { api: 300, login: 20, writes: 100 }) {
   app.set("env", "production");
   applySecurity(app, limits);
   app.use((req, _res, next) => {
-    // Test-only simulation of an identity already verified by Passport.
+    // Test-only simulation of an identity already verified by the session.
     if (req.get("X-Test-Subject")) req.user = { claims: { sub: req.get("X-Test-Subject") } } as any;
     next();
   });
@@ -28,23 +28,23 @@ function testApp(limits = { api: 300, login: 20, writes: 100 }) {
 
 describe("HTTP security protections", () => {
   beforeAll(() => {
-    vi.stubEnv("REPLIT_DOMAINS", "app.example.test");
+    vi.stubEnv("APP_ORIGIN", "https://app.example.test");
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("ADMIN_USER_IDS", "admin-subject");
   });
   afterAll(() => vi.unstubAllEnvs());
 
-  it("sets security headers without blocking the Replit preview", async () => {
+  it("sets security headers with a same-origin policy", async () => {
     const response = await request(testApp()).get("/api/test");
     expect(response.status).toBe(200);
     expect(response.headers["x-powered-by"]).toBeUndefined();
     expect(response.headers["x-content-type-options"]).toBe("nosniff");
-    expect(response.headers["content-security-policy"]).toContain("https://replit.com");
+    expect(response.headers["content-security-policy"]).not.toContain("replit.com");
     expect(response.headers["content-security-policy"].match(/script-src [^;]+/)?.[0])
       .not.toContain("'unsafe-inline'");
     expect(response.headers["referrer-policy"]).toBe("same-origin");
     expect(response.headers["content-security-policy"].match(/form-action [^;]+/)?.[0])
-      .toBe("form-action 'self' https://replit.com");
+      .toBe("form-action 'self'");
   });
 
   it("blocks cross-origin state changes", async () => {
@@ -60,6 +60,12 @@ describe("HTTP security protections", () => {
   it("accepts requests from the configured app origin", async () => {
     expect((await request(testApp()).post("/api/test").set("Origin", "https://app.example.test").send({})).status)
       .toBe(200);
+  });
+
+  it("accepts requests whose Origin matches the request host", async () => {
+    const response = await request(testApp()).post("/api/test").set("Host", "lawn.example.test")
+      .set("Origin", "https://lawn.example.test").send({});
+    expect(response.status).toBe(200);
   });
 
   it("allows top-level OAuth GET redirects from a provider", async () => {
