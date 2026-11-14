@@ -20,6 +20,15 @@ describe('Schedule API', () => {
       expect(response.body.length).toBe(52);
     });
 
+    it('returns weeks in ascending week number order', async () => {
+      const response = await request(app)
+        .get('/api/schedule');
+
+      expect(response.status).toBe(200);
+      const weekNumbers = response.body.map((w: any) => w.weekNumber);
+      expect(weekNumbers).toEqual([...weekNumbers].sort((a: number, b: number) => a - b));
+    });
+
     it('each week has required fields', async () => {
       const response = await request(app)
         .get('/api/schedule');

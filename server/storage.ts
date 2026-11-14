@@ -2,7 +2,7 @@ import { type User, type UpsertUser, type Inventory, type InsertInventory, type 
 import { NZLA_PRODUCTS } from "@shared/products";
 import { randomUUID } from "crypto";
 import { db } from "./db";
-import { eq, and, count, sql } from "drizzle-orm";
+import { eq, and, count, sql, asc } from "drizzle-orm";
 import { insertInventorySchema } from "@shared/schema";
 import { applyWeek, undoWeek } from "./weekApplications";
 
@@ -217,7 +217,7 @@ export class DatabaseStorage implements IStorage {
 
   // Weekly schedule methods
   async getAllWeeklySchedule(): Promise<WeeklySchedule[]> {
-    return await db.select().from(weeklySchedule);
+    return await db.select().from(weeklySchedule).orderBy(asc(weeklySchedule.weekNumber));
   }
 
   async getWeeklyScheduleByWeek(weekNumber: number): Promise<WeeklySchedule | undefined> {
