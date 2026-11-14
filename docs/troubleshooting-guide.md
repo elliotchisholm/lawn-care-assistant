@@ -12,7 +12,7 @@ This guide helps diagnose and resolve issues when the weekly schedule fails to l
 
 **Access the health endpoint:**
 ```bash
-curl https://your-deployed-app.replit.app/api/health
+curl https://lawn-care-assistant.onrender.com/api/health
 ```
 
 **Expected healthy response:**
@@ -37,7 +37,7 @@ curl https://your-deployed-app.replit.app/api/health
 
 **Test specific week:**
 ```bash
-curl https://your-deployed-app.replit.app/api/schedule/41
+curl https://lawn-care-assistant.onrender.com/api/schedule/41
 ```
 
 **Expected response:**
@@ -125,7 +125,7 @@ Look for these key messages in server logs:
 **Manual verification:**
 ```bash
 # Check if data exists
-curl https://your-app.replit.app/api/schedule | grep weekNumber
+curl https://lawn-care-assistant.onrender.com/api/schedule | grep weekNumber
 ```
 
 ---
@@ -139,7 +139,7 @@ curl https://your-app.replit.app/api/schedule | grep weekNumber
 **Diagnostic steps:**
 1. Check specific week API:
    ```bash
-   curl https://your-app.replit.app/api/schedule/1
+   curl https://lawn-care-assistant.onrender.com/api/schedule/1
    ```
 
 2. Check database query logs in server output
@@ -164,7 +164,7 @@ curl https://your-app.replit.app/api/schedule | grep weekNumber
 1. Verify frontend and backend are on same port (5000)
 2. Check Vite proxy configuration
 3. Ensure API routes start with `/api/`
-4. Verify Replit deployment settings
+4. Verify the Render service settings and the latest deploy log
 
 ---
 
@@ -189,7 +189,7 @@ curl https://your-app.replit.app/api/schedule | grep weekNumber
 
 2. **Verify health check endpoint:**
    ```bash
-   curl https://your-app.replit.app/api/health
+   curl https://lawn-care-assistant.onrender.com/api/health
    ```
 
 3. **Check deployment logs** for initialization errors
@@ -210,7 +210,7 @@ In development, the error card will show additional debug information:
 Watch initialization in real-time:
 ```bash
 # Monitor health endpoint
-watch -n 1 'curl -s https://your-app.replit.app/api/health'
+watch -n 1 'curl -s https://lawn-care-assistant.onrender.com/api/health'
 ```
 
 ### Check Database Directly
@@ -272,7 +272,7 @@ If issues persist:
 
 1. **Check health endpoint output:**
    ```bash
-   curl https://your-app.replit.app/api/health
+   curl https://lawn-care-assistant.onrender.com/api/health
    ```
 
 2. **Provide these details:**
@@ -284,7 +284,7 @@ If issues persist:
 
 3. **Test specific week API:**
    ```bash
-   curl https://your-app.replit.app/api/schedule/41
+   curl https://lawn-care-assistant.onrender.com/api/schedule/41
    ```
 
 ---

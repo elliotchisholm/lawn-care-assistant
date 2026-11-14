@@ -31,7 +31,7 @@ This document outlines a phased approach to implementing observability for the l
 
 ### Recommended Tools
 - **Console logging** (already in place) - enhance with structured JSON logs
-- **Replit built-in logs** - review regularly for patterns
+- **Render logs** - review regularly for patterns
 - **Simple metrics file** - track daily/weekly user counts in a local JSON file
 
 ### Implementation Triggers for Phase 2
@@ -71,7 +71,6 @@ This document outlines a phased approach to implementing observability for the l
 ### Recommended Tools
 - **Sentry** (free tier: 5k errors/month) - error tracking with context
 - **PostHog** (free tier: 1M events/month) - product analytics & session replay
-- **Replit Analytics** (if available) - built-in metrics
 
 ### Implementation Triggers for Phase 3
 - **100+ daily active users**
