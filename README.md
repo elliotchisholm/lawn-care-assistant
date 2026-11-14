@@ -49,7 +49,7 @@ Copy `.env.example` to `.env` and fill in the values. `.env` is gitignored and l
 
 ```bash
 npm install
-npm run db:push   # push schema to database
+npx drizzle-kit migrate   # apply migrations in ./migrations to DATABASE_URL
 npm run dev       # start dev server
 ```
 
@@ -58,9 +58,9 @@ The app runs on `http://localhost:5000` with the frontend and backend served fro
 ### Run Tests
 
 ```bash
-bash scripts/run-tests.sh        # full suite (76 tests)
-npx vitest run                   # backend only (58 tests, needs DATABASE_URL pointing at a test database)
-npx vitest run --config vitest.client.config.ts  # frontend only (18 tests)
+bash scripts/run-tests.sh        # full suite
+npx vitest run                   # backend only (needs DATABASE_URL pointing at a test database)
+npx vitest run --config vitest.client.config.ts  # frontend only
 ```
 
 ## Project Structure
@@ -72,8 +72,10 @@ npx vitest run --config vitest.client.config.ts  # frontend only (18 tests)
 │   └── hooks/           # Custom hooks (useAuth, etc.)
 ├── server/              # Express backend
 │   ├── routes.ts        # API endpoints
+│   ├── auth.ts          # Password login and sessions
 │   ├── storage.ts       # Database access layer
 │   └── __tests__/       # Backend integration tests
+├── migrations/          # Drizzle SQL migrations
 ├── shared/              # Shared types and constants
 │   ├── schema.ts        # Drizzle schema + Zod types
 │   ├── canonicalProductNames.ts  # Single source of truth for product names
@@ -94,4 +96,6 @@ npx vitest run --config vitest.client.config.ts  # frontend only (18 tests)
 | GET | `/api/applied-weeks` | Application history |
 | POST | `/api/applied-weeks` | Mark week as applied |
 | DELETE | `/api/applied-weeks/:id` | Undo application |
+| POST | `/api/login` | Sign in with the app password |
+| POST | `/api/logout` | Sign out |
 | GET | `/api/health` | Health check |
