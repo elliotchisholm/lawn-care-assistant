@@ -11,3 +11,7 @@ vite.config.ts.*
 
 # Private screenshot supplied while investigating authentication behavior.
 /attached_assets/image_1791585948879.png
+# Local environment files
+.env
+.env.*
+!.env.example

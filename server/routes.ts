@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertInventorySchema, updateInventorySchema, insertAppliedWeekSchema, type InventoryAdjustment } from "@shared/schema";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupAuth, isAuthenticated } from "./auth";
 import { z } from "zod";
 import { parsePackageSizes } from "./parsePackageSizes";
 import { requireAdmin, applyRateLimits } from "./security";
@@ -11,7 +11,7 @@ import { WeekAlreadyAppliedError } from "./weekApplications";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication middleware
-  await setupAuth(app);
+  setupAuth(app);
   applyRateLimits(app);
 
   // Enhanced health check endpoint (Phase 1 observability)

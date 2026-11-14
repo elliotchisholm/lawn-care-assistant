@@ -20,7 +20,7 @@ function isEmptyNeonResultError(error: unknown): boolean {
 // you might need
 
 export interface IStorage {
-  // User operations required for Replit Auth
+  // User operations required for single-user auth
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
   updateUserLawnSize(userId: string, lawnSize: number): Promise<User | undefined>;
@@ -55,7 +55,7 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
-  // User operations required for Replit Auth
+  // User operations required for single-user auth
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;

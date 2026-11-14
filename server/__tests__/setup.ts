@@ -1,7 +1,7 @@
 import { beforeAll, afterAll, beforeEach, vi } from 'vitest';
 
-vi.mock('../replitAuth', () => ({
-  setupAuth: vi.fn().mockResolvedValue(undefined),
+vi.mock('../auth', () => ({
+  setupAuth: vi.fn(),
   isAuthenticated: (req: any, res: any, next: any) => {
     if (req.headers['x-test-user-id']) {
       req.user = {

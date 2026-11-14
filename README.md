@@ -9,7 +9,7 @@ A personalised lawn care web app based on the official **New Zealand Lawn Addict
 - **Inventory tracking** — Log what products you have in stock. Supports unit conversions (kg ↔ g, L ↔ ml).
 - **Purchase recommendations** — See what you need to buy based on your inventory and upcoming applications.
 - **Mark as applied** — Record completed applications; inventory adjusts automatically. Undo if you make a mistake.
-- **Google login** — Sign in with your Google account via Replit Auth.
+- **Password login** — Single-user access protected by a shared password.
 
 ## Tech Stack
 
@@ -23,13 +23,13 @@ A personalised lawn care web app based on the official **New Zealand Lawn Addict
 | Backend | Express.js, TypeScript |
 | Database | PostgreSQL (Neon serverless) |
 | ORM | Drizzle ORM |
-| Auth | Replit Auth (Google SSO via OIDC) |
+| Auth | Single shared password with Postgres-backed sessions |
 
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js 20+
+- Node.js 20 (see `.nvmrc`)
 - A PostgreSQL database (the app is configured for [Neon](https://neon.tech))
 
 ### Environment Variables
@@ -38,8 +38,12 @@ A personalised lawn care web app based on the official **New Zealand Lawn Addict
 |---|---|
 | `DATABASE_URL` | PostgreSQL connection string |
 | `SESSION_SECRET` | Secret for signing session cookies |
-| `REPL_ID` | Replit environment ID (auto-set on Replit) |
-| `REPLIT_DOMAINS` | Allowed domains for auth (auto-set on Replit) |
+| `APP_PASSWORD` | Password for the single login |
+| `OWNER_USER_ID` | User ID that owns all data |
+| `PORT` | Optional, defaults to 5000 |
+| `APP_ORIGIN` | Optional extra allowed origins (comma-separated), e.g. a custom domain |
+
+Copy `.env.example` to `.env` and fill in the values. `.env` is gitignored and loaded automatically.
 
 ### Install & Run
 
@@ -49,13 +53,13 @@ npm run db:push   # push schema to database
 npm run dev       # start dev server
 ```
 
-The app runs on `http://localhost:5000` with the frontend and backend served from the same port.
+The app runs on `http://localhost:5000` with the frontend and backend served from the same port. Sign in at `/login` with `APP_PASSWORD`.
 
 ### Run Tests
 
 ```bash
 bash scripts/run-tests.sh        # full suite (76 tests)
-npx vitest run                   # backend only (58 tests)
+npx vitest run                   # backend only (58 tests, needs DATABASE_URL pointing at a test database)
 npx vitest run --config vitest.client.config.ts  # frontend only (18 tests)
 ```
 

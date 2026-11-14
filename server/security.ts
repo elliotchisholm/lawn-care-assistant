@@ -15,14 +15,20 @@ export const requireAdmin: RequestHandler = (req, res, next) => {
 export const requireSameOrigin: RequestHandler = (req, res, next) => {
   if (["GET", "HEAD", "OPTIONS"].includes(req.method)) return next();
   const origin = req.get("Origin");
-  const domains = (process.env.REPLIT_DOMAINS ?? "").split(",").map(domain => domain.trim()).filter(Boolean);
-  if (process.env.REPLIT_DEV_DOMAIN) domains.push(process.env.REPLIT_DEV_DOMAIN);
-  const allowed = new Set(domains.map(domain => `https://${domain}`));
+  // Allow the request's own host (works behind Render's proxy without config)
+  // plus any extra origins listed in APP_ORIGIN (comma-separated, e.g. a custom domain).
+  const allowed = new Set(
+    (process.env.APP_ORIGIN ?? "").split(",").map(value => value.trim()).filter(Boolean),
+  );
   if (process.env.NODE_ENV !== "production") {
     allowed.add("http://localhost:5000");
     allowed.add("http://127.0.0.1:5000");
   }
-  if (req.get("Sec-Fetch-Site") === "cross-site" || (origin && !allowed.has(origin))) {
+  let sameHost = false;
+  if (origin) {
+    try { sameHost = new URL(origin).host === req.get("Host"); } catch { sameHost = false; }
+  }
+  if (req.get("Sec-Fetch-Site") === "cross-site" || (origin && !sameHost && !allowed.has(origin))) {
     return res.status(403).json({ error: "Cross-site request blocked" });
   }
   next();
@@ -46,7 +52,6 @@ export function applySecurity(app: Express, limits = { api: 300, login: 20, writ
   app.set("trust proxy", proxies);
   app.set("rateLimitConfig", limits);
   const development = app.get("env") === "development";
-  const authProviderOrigin = new URL(process.env.ISSUER_URL ?? "https://replit.com/oidc").origin;
   app.use(helmet({
     frameguard: false,
     crossOriginEmbedderPolicy: false,
@@ -55,15 +60,13 @@ export function applySecurity(app: Express, limits = { api: 300, login: 20, writ
     referrerPolicy: { policy: "same-origin" },
     contentSecurityPolicy: {
       directives: {
-        // Chromium also applies form-action to redirects after native POSTs.
-        // Logout redirects to the configured provider to end its SSO session.
-        formAction: ["'self'", authProviderOrigin],
-        scriptSrc: ["'self'", "https://replit.com", ...(development ? ["'unsafe-inline'"] : [])],
+        formAction: ["'self'"],
+        scriptSrc: ["'self'", ...(development ? ["'unsafe-inline'"] : [])],
         styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
         imgSrc: ["'self'", "data:", "https:"],
         connectSrc: ["'self'", ...(development ? ["ws:", "wss:"] : [])],
-        frameAncestors: ["'self'", "https://replit.com", "https://*.replit.com"],
+        frameAncestors: ["'self'"],
         upgradeInsecureRequests: development ? null : [],
       },
     },
@@ -96,7 +99,7 @@ export function applySecurity(app: Express, limits = { api: 300, login: 20, writ
   app.use("/api", requireSameOrigin);
 }
 
-/** Install after Passport has verified the session, but before auth/API routes. */
+/** Install after the session middleware (setupAuth), before API routes. */
 export function applyRateLimits(app: Express) {
   if (app.get("rateLimitsInstalled")) return;
   app.set("rateLimitsInstalled", true);
