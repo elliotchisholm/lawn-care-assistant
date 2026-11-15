@@ -7,19 +7,15 @@ graph TB
     User[("👤 Lawn Care User<br/>(Person)")]
     LawnApp["🌿 Lawn Care Application<br/>(Software System)<br/>---<br/>Provides weekly NZLA product<br/>recommendations and inventory<br/>tracking for lawn maintenance"]
     NZLA["📚 NZLA Website<br/>(External System)<br/>---<br/>Source of official<br/>application guide data"]
-    ReplitAuth["🔐 Replit Auth<br/>(External System)<br/>---<br/>Handles Google SSO<br/>authentication"]
-    
-    User -->|"Uses to manage lawn care<br/>and track products"| LawnApp
+        User -->|"Uses to manage lawn care<br/>and track products"| LawnApp
     LawnApp -->|"References application<br/>guide content"| NZLA
-    LawnApp -->|"Authenticates users via<br/>Google SSO (OIDC)"| ReplitAuth
     
     style LawnApp fill:#10b981,stroke:#059669,stroke-width:3px,color:#fff
     style User fill:#3b82f6,stroke:#2563eb,stroke-width:2px,color:#fff
     style NZLA fill:#64748b,stroke:#475569,stroke-width:2px,color:#fff
-    style ReplitAuth fill:#64748b,stroke:#475569,stroke-width:2px,color:#fff
 ```
 
-**Description**: Shows the Lawn Care Application in context with its users and external dependencies. Users interact with the system to get personalized lawn care recommendations based on the official NZLA guide, with optional authentication for advanced features.
+**Description**: Shows the Lawn Care Application in context with its users and external dependencies. Users interact with the system to get personalized lawn care recommendations based on the official NZLA guide, with a password login for advanced features.
 
 ---
 
@@ -37,20 +33,16 @@ graph TB
         DB[("💾 PostgreSQL Database<br/>(Neon Serverless)<br/>---<br/>• Users & Sessions<br/>• Weekly Schedule (52 weeks)<br/>• Product Inventory<br/>• Applied Weeks (with undo)")]
     end
     
-    ReplitAuth["🔐 Replit Auth Service<br/>(OIDC Provider)<br/>---<br/>Google SSO authentication"]
-    
     NZLA["📚 NZLA Website<br/>---<br/>Content reference only"]
     
     User -->|"HTTPS<br/>(Port 5000)"| WebApp
     WebApp -->|"API Requests<br/>(JSON/REST)<br/>Custom queryFn"| API
     API -->|"SQL Queries<br/>(Drizzle ORM)"| DB
-    API -->|"OAuth 2.0<br/>OIDC Flow"| ReplitAuth
     WebApp -.->|"Attribution link<br/>(reference only)"| NZLA
     
     style WebApp fill:#3b82f6,stroke:#2563eb,stroke-width:2px,color:#fff
     style API fill:#8b5cf6,stroke:#7c3aed,stroke-width:2px,color:#fff
     style DB fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#fff
-    style ReplitAuth fill:#64748b,stroke:#475569,stroke-width:2px,color:#fff
     style NZLA fill:#64748b,stroke:#475569,stroke-width:2px,color:#fff
     style LawnCareSystem fill:#ecfdf5,stroke:#10b981,stroke-width:3px
 ```
@@ -59,7 +51,6 @@ graph TB
 - **Web Application**: React-based SPA with Vite, handles all UI and user interactions with custom React Query pattern for user-scoped caching
 - **API Server**: Express backend managing business logic, authentication, data persistence, and product name normalization
 - **PostgreSQL Database**: Stores users, weekly schedules, inventory data, and applied weeks with undo support
-- **Replit Auth**: External OAuth provider for secure Google SSO
 
 ---
 
@@ -88,7 +79,7 @@ graph TB
     end
     
     DB[("💾 PostgreSQL Database")]
-    Auth["🔐 Replit Auth"]
+    Auth["🔐 Password login<br/>(server/auth.ts)"]
     
     WebApp -->|"HTTP Requests"| Routes
     Routes --> AuthMW
@@ -353,7 +344,7 @@ sequenceDiagram
 - Idempotent upsert operations (safe restarts)
 
 ### 6. **Authentication Strategy**
-- Replit Auth (OIDC) for Google SSO
+- Single shared password (`APP_PASSWORD`) checked in constant time, with a per-IP failed-login limit
 - Server-side sessions in PostgreSQL
 - Session-based user identification (not client-provided IDs)
 - Client-side feature unlocking (no route redirects)
