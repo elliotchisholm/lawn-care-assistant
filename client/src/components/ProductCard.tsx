@@ -5,8 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Droplets, Beaker, CheckCircle, XCircle, AlertTriangle, Check } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { convertQuantity } from "@shared/unitConversions";
-import { normalizeProductName } from "@shared/canonicalProductNames";
+import { getStockInUnit } from "@/lib/productMatching";
 import type { ApplicationDay, InventoryAdjustment } from "@shared/schema";
 import MarkAsAppliedDialog, { AppliedBadge } from "./MarkAsAppliedDialog";
 import { useAuth } from "@/hooks/useAuth";
@@ -151,12 +150,9 @@ export default function ProductCard({
 
   // Helper function to get inventory status for a product
   const getInventoryStatus = (productName: string, requiredQuantity: number, unit: string) => {
-    const normalizedProductName = normalizeProductName(productName);
-    const inventoryItems = inventory.filter(item => 
-      normalizeProductName(item.productName) === normalizedProductName
-    );
-    
-    if (inventoryItems.length === 0) {
+    const { total: totalConverted, itemCount } = getStockInUnit(inventory, productName, unit);
+
+    if (itemCount === 0) {
       return {
         status: 'out_of_stock' as const,
         currentQuantity: 0,
@@ -165,12 +161,6 @@ export default function ProductCard({
       };
     }
 
-    const totalConverted = inventoryItems.reduce((sum, item) => {
-      const qty = parseFloat(item.currentQuantity);
-      const converted = convertQuantity(qty, item.unit, unit);
-      return sum + converted;
-    }, 0);
-    
     const sufficient = totalConverted >= requiredQuantity;
     
     return {

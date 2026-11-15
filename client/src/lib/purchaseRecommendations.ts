@@ -1,4 +1,5 @@
-import { convertQuantity } from "@shared/unitConversions";
+import { normalizeProductName } from "@shared/canonicalProductNames";
+import { findByProduct, getStockInUnit, sameProduct } from "@/lib/productMatching";
 import type { WeeklySchedule } from "@shared/schema";
 import { calculatePackagePurchase, formatPackageRecommendation, type PackageSize } from "@/lib/packageCalculator";
 
@@ -46,7 +47,7 @@ export function computePurchaseRecommendations({
     return [];
   }
 
-  const productTotals = new Map<string, { total: number; unit: string; applications: number }>();
+  const productTotals = new Map<string, { productName: string; total: number; unit: string; applications: number }>();
 
   // Calculate future product needs using API data
   for (let i = 0; i < weeksToAnalyze; i++) {
@@ -64,17 +65,20 @@ export function computePurchaseRecommendations({
         if (Array.isArray(day.products)) {
           day.products.forEach((product: any) => {
             const scaledQuantity = product.quantity * scaleFactor;
-            const key = `${product.name}_${product.unit}`;
+            const productName = normalizeProductName(product.name);
+            const key = `${productName}\u0000${product.unit}`;
 
             if (productTotals.has(key)) {
               const existing = productTotals.get(key)!;
               productTotals.set(key, {
+                productName,
                 total: existing.total + scaledQuantity,
                 unit: product.unit,
                 applications: existing.applications + 1
               });
             } else {
               productTotals.set(key, {
+                productName,
                 total: scaledQuantity,
                 unit: product.unit,
                 applications: 1
@@ -89,17 +93,8 @@ export function computePurchaseRecommendations({
   // Compare with current inventory
   const recommendations: PurchaseRecommendation[] = [];
 
-  productTotals.forEach(({ total, unit, applications }, key) => {
-    const productName = key.split('_')[0];
-    const inventoryItems = inventory.filter(item => 
-      item.productName === productName
-    );
-
-    const currentStock = inventoryItems.reduce((sum, item) => {
-      const qty = parseFloat(item.currentQuantity);
-      const converted = convertQuantity(qty, item.unit, unit);
-      return sum + converted;
-    }, 0);
+  productTotals.forEach(({ productName, total, unit }) => {
+    const currentStock = getStockInUnit(inventory, productName, unit).total;
 
     const shortfall = total - currentStock;
 
@@ -112,7 +107,7 @@ export function computePurchaseRecommendations({
       }
 
       // Try to find package sizes for this product
-      const productPackages = packageSizes[productName];
+      const productPackages = findByProduct(packageSizes, productName);
       let packageRecommendation: string | undefined;
       let suggestedPurchase: number;
 
@@ -182,7 +177,7 @@ export function getStockWarning(
   recommendations: PurchaseRecommendation[],
   productName: string,
 ): StockWarning | null {
-  const rec = recommendations.find((r) => r.productName === productName);
+  const rec = recommendations.find((r) => sameProduct(r.productName, productName));
   if (!rec) return null;
   if (rec.currentStock <= 0) return { level: "out", weeksLeft: 0 };
   return { level: "low", weeksLeft: rec.weeksUntilEmpty };
