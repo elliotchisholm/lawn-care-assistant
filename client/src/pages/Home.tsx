@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
-import { ExternalLink, Lock, BarChart3, ShoppingCart, LogIn, Calendar } from "lucide-react";
+import { ExternalLink, Lock, BarChart3, ShoppingCart, LogIn } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { useLawnSize } from "@/lib/LawnSizeContext";
 import { useCurrentWeek } from "@/hooks/useCurrentWeek";
 import { useToast } from "@/hooks/use-toast";
 import { type WeeklySchedule, type ApplicationDay } from "@shared/schema";
-import HeroSection from "@/components/HeroSection";
-import CurrentWeekDisplay from "@/components/CurrentWeekDisplay";
+import WeekHeader from "@/components/WeekHeader";
+import ResponsiveSheet from "@/components/ResponsiveSheet";
 import LawnSizeCalculator from "@/components/LawnSizeCalculator";
 import ProductCard from "@/components/ProductCard";
 import InventoryManager from "@/components/InventoryManager";
@@ -15,7 +15,6 @@ import PurchaseRecommendations from "@/components/PurchaseRecommendations";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function Home() {
   const { isAuthenticated } = useAuth();
@@ -43,6 +42,7 @@ export default function Home() {
   
   // State for selected week (defaults to current week)
   const [selectedWeek, setSelectedWeek] = useState(currentWeekNumber);
+  const [lawnOpen, setLawnOpen] = useState(false);
   
   // Fetch selected week's application from database
   const weekQuery = useQuery<WeeklySchedule, Error>({
@@ -68,79 +68,31 @@ export default function Home() {
   return (
     <>
       <main className="container mx-auto px-3 sm:px-4 py-4 md:py-6 space-y-4 md:space-y-6">
-        {/* Hero Section */}
-        <HeroSection />
-        
-        {/* Attribution Banner */}
-        <div className="bg-muted/50 border rounded-lg p-3 md:p-4 transition-all hover:bg-muted/70">
-          <div className="flex items-start gap-2 md:gap-3">
-            <ExternalLink className="h-4 w-4 md:h-5 md:w-5 text-muted-foreground shrink-0 mt-0.5" />
-            <div className="text-xs md:text-sm">
-              <p className="text-foreground">
-                <strong>Content Source:</strong> All application calculations, product recommendations, and guidance are based on the{" "}
-                <a 
-                  href="https://www.newzealandlawnaddicts.com/application-guide" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-primary underline hover:no-underline font-medium transition-colors"
-                  data-testid="link-nzla-guide"
-                >
-                  New Zealand Lawn Addicts Application Guide
-                </a>
-                .
-              </p>
-              <p className="text-muted-foreground mt-1">
-                The application guide and its content are the intellectual property of New Zealand Lawn Addicts. This tool provides calculations and tracking based on their guidance.
-              </p>
-            </div>
-          </div>
-        </div>
-        
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
-          {/* Left Column */}
-          <div className="space-y-4 md:space-y-6">
-            <CurrentWeekDisplay />
-            <LawnSizeCalculator 
-              currentSize={lawnSize} 
-              onSizeChange={setLawnSize}
+        {/* Main Content */}
+        <div className="mx-auto max-w-3xl space-y-4 md:space-y-6">
+          <WeekHeader
+            selectedWeek={selectedWeek}
+            currentWeek={currentWeekNumber}
+            onWeekChange={setSelectedWeek}
+            week={currentWeek}
+            lawnSize={lawnSize}
+            onLawnSizeClick={() => setLawnOpen(true)}
+          />
+
+          <ResponsiveSheet open={lawnOpen} onOpenChange={setLawnOpen} title="Lawn size">
+            <LawnSizeCalculator
+              currentSize={lawnSize}
+              onSizeChange={(size) => {
+                setLawnSize(size);
+                setLawnOpen(false);
+              }}
               isSaving={isSaving}
               isLoading={isUserLoading}
               saveSuccess={saveSuccess}
             />
-          </div>
-          
-          {/* Right Column - Product Application, Inventory, and Purchase Recommendations */}
-          <div className="lg:col-span-2 space-y-4 md:space-y-6">
-            {/* Week Selector */}
-            <Card data-testid="card-week-selector">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Calendar className="h-5 w-5 text-primary" />
-                  Select Application Week
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-3">
-                  <Select 
-                    value={selectedWeek.toString()} 
-                    onValueChange={(value) => setSelectedWeek(parseInt(value))}
-                  >
-                    <SelectTrigger className="w-full" data-testid="select-week">
-                      <SelectValue placeholder="Select a week" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Array.from({ length: 52 }, (_, i) => i + 1).map((week) => (
-                        <SelectItem key={week} value={week.toString()} data-testid={`option-week-${week}`}>
-                          Week {week} {week === currentWeekNumber && "(Current Week)"}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </CardContent>
-            </Card>
-            
+          </ResponsiveSheet>
+
+          <div className="space-y-4 md:space-y-6">
             {isWeekLoading && (
               <Skeleton className="h-96 w-full" data-testid="skeleton-loading-application" />
             )}
@@ -262,6 +214,33 @@ export default function Home() {
               </Card>
             )}
           </div>
+        </div>
+
+        <div className="mx-auto max-w-3xl">
+        {/* Attribution Banner */}
+        <div className="bg-muted/50 border rounded-lg p-3 md:p-4 transition-all hover:bg-muted/70">
+          <div className="flex items-start gap-2 md:gap-3">
+            <ExternalLink className="h-4 w-4 md:h-5 md:w-5 text-muted-foreground shrink-0 mt-0.5" />
+            <div className="text-xs md:text-sm">
+              <p className="text-foreground">
+                <strong>Content Source:</strong> All application calculations, product recommendations, and guidance are based on the{" "}
+                <a 
+                  href="https://www.newzealandlawnaddicts.com/application-guide" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-primary underline hover:no-underline font-medium transition-colors"
+                  data-testid="link-nzla-guide"
+                >
+                  New Zealand Lawn Addicts Application Guide
+                </a>
+                .
+              </p>
+              <p className="text-muted-foreground mt-1">
+                The application guide and its content are the intellectual property of New Zealand Lawn Addicts. This tool provides calculations and tracking based on their guidance.
+              </p>
+            </div>
+          </div>
+        </div>
         </div>
       </main>
     </>

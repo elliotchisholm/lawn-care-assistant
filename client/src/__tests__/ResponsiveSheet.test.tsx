@@ -37,13 +37,13 @@ describe('WeekPicker', () => {
   it('steps and picks weeks', () => {
     const onChange = vi.fn();
     render(<WeekPicker value={46} currentWeek={46} onChange={onChange} />);
-    expect(screen.getByTestId('button-week-open')).toHaveTextContent('Week 46 (current)');
+    expect(screen.getByTestId('select-week')).toHaveTextContent('Week 46 (current)');
     fireEvent.click(screen.getByTestId('button-week-prev'));
     expect(onChange).toHaveBeenCalledWith(45);
     fireEvent.click(screen.getByTestId('button-week-next'));
     expect(onChange).toHaveBeenCalledWith(47);
-    fireEvent.click(screen.getByTestId('button-week-open'));
-    fireEvent.click(screen.getByTestId('week-option-12'));
+    fireEvent.click(screen.getByTestId('select-week'));
+    fireEvent.click(screen.getByTestId('option-week-12'));
     expect(onChange).toHaveBeenCalledWith(12);
   });
 

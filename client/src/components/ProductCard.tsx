@@ -179,7 +179,7 @@ export default function ProductCard({
           color: 'text-green-600 dark:text-green-500',
           bgColor: 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800',
           textColor: 'text-green-900 dark:text-green-100',
-          badge: 'sufficient'
+          badge: 'Enough'
         };
       case 'insufficient':
         return {
@@ -187,7 +187,7 @@ export default function ProductCard({
           color: 'text-yellow-600 dark:text-yellow-500',
           bgColor: 'bg-yellow-50 dark:bg-yellow-950/30 border-yellow-200 dark:border-yellow-800',
           textColor: 'text-yellow-900 dark:text-yellow-100',
-          badge: 'low'
+          badge: 'Low'
         };
       case 'out_of_stock':
         return {
@@ -195,7 +195,7 @@ export default function ProductCard({
           color: 'text-red-600 dark:text-red-500',
           bgColor: 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800',
           textColor: 'text-red-900 dark:text-red-100',
-          badge: 'out'
+          badge: 'Missing'
         };
     }
   };
@@ -237,7 +237,7 @@ export default function ProductCard({
                   return (
                     <div key={productIndex}>
                       <div 
-                        className={`flex items-center justify-between p-3 rounded-md border ${statusDisplay.bgColor} ${statusDisplay.textColor}`}
+                        className={`flex items-center justify-between gap-3 p-4 rounded-xl border ${statusDisplay.bgColor} ${statusDisplay.textColor}`}
                         data-testid={`product-${dayIndex}-${productIndex}`}
                       >
                         <div className="flex-1">
@@ -272,8 +272,8 @@ export default function ProductCard({
                             </p>
                           </div>
                         </div>
-                        <div className="text-right ml-4">
-                          <p className="font-semibold text-lg" data-testid={`text-quantity-${dayIndex}-${productIndex}`}>
+                        <div className="text-right shrink-0">
+                          <p className="font-semibold text-2xl tabular-nums" data-testid={`text-quantity-${dayIndex}-${productIndex}`}>
                             {scaledQuantity.toFixed(0)}{product.unit}
                           </p>
                           <p className="text-xs opacity-70">
@@ -318,7 +318,7 @@ export default function ProductCard({
             ) : (
               <Button
                 onClick={() => setIsDialogOpen(true)}
-                className="w-full"
+                className="w-full min-h-14 text-base"
                 size="lg"
                 data-testid="button-mark-as-applied"
               >
