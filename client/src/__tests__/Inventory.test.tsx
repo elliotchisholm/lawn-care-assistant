@@ -7,6 +7,12 @@ vi.mock('@/hooks/useAuth', () => ({
   useAuth: () => ({ user: { id: 'u1' }, isAuthenticated: true, isLoading: false }),
 }));
 
+const recs = vi.hoisted(() => ({ value: [] as any[] }));
+vi.mock('@/lib/LawnSizeContext', () => ({ useLawnSize: () => ({ lawnSize: 100 }) }));
+vi.mock('@/hooks/usePurchaseRecommendations', () => ({
+  usePurchaseRecommendations: () => ({ recommendations: recs.value, isLoading: false }),
+}));
+
 const items = [
   { id: 'i1', userId: 'u1', productName: 'Liquid Iron', currentQuantity: '500', unit: 'ml', notes: 'Bought Oct', lastUpdated: '2026-11-01T00:00:00Z' },
   { id: 'i2', userId: 'u1', productName: 'Granular N', currentQuantity: '2', unit: 'kg', lastUpdated: '2026-11-02T00:00:00Z' },
@@ -16,6 +22,7 @@ const fetchMock = vi.fn();
 
 describe('InventoryManager', () => {
   beforeEach(() => {
+    recs.value = [];
     fetchMock.mockReset();
     fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
       if (url === '/api/inventory' && !init?.method) return new Response(JSON.stringify(items), { status: 200 });
@@ -70,5 +77,23 @@ describe('InventoryManager', () => {
     fireEvent.click(await screen.findByTestId('button-delete-granular-n'));
     fireEvent.click(await screen.findByTestId('button-cancel-delete'));
     expect(fetchMock.mock.calls.some(([, i]) => i?.method === 'DELETE')).toBe(false);
+  });
+
+  it('flags low and out-of-stock items from the schedule-based recommendations', async () => {
+    recs.value = [
+      { productName: 'Liquid Iron', unit: 'ml', currentStock: 500, totalNeeded: 800, shortfall: 300, weeksUntilEmpty: 2, suggestedPurchase: 300 },
+      { productName: 'Granular N', unit: 'g', currentStock: 0, totalNeeded: 400, shortfall: 400, weeksUntilEmpty: 0, suggestedPurchase: 400 },
+    ];
+    render(<InventoryManager />);
+    expect(await screen.findByTestId('text-stock-warning-liquid-iron')).toHaveTextContent('Low: about 2 weeks left');
+    expect(screen.getByTestId('text-stock-warning-granular-n')).toHaveTextContent('Out of stock');
+    expect(screen.getByTestId('badge-low-stock-count')).toHaveTextContent('2 low');
+  });
+
+  it('shows no warnings when nothing is short', async () => {
+    render(<InventoryManager />);
+    await screen.findByTestId('inventory-item-liquid-iron');
+    expect(screen.queryByTestId('text-stock-warning-liquid-iron')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('badge-low-stock-count')).not.toBeInTheDocument();
   });
 });
