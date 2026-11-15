@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
-import { format, startOfYear, differenceInWeeks } from "date-fns";
 import { ExternalLink, Lock, BarChart3, ShoppingCart, LogIn, Calendar } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useQuery } from "@tanstack/react-query";
+import { useLawnSize } from "@/lib/LawnSizeContext";
+import { useCurrentWeek } from "@/hooks/useCurrentWeek";
 import { useToast } from "@/hooks/use-toast";
-import { type User, type WeeklySchedule, type ApplicationDay } from "@shared/schema";
+import { type WeeklySchedule, type ApplicationDay } from "@shared/schema";
 import Header from "@/components/Header";
 import HeroSection from "@/components/HeroSection";
 import CurrentWeekDisplay from "@/components/CurrentWeekDisplay";
@@ -20,8 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 export default function Home() {
   const { isAuthenticated } = useAuth();
-  const [lawnSize, setLawnSize] = useState(100);
-  const [saveSuccess, setSaveSuccess] = useState(false);
+  const { lawnSize, setLawnSize, isSaving, isLoading: isUserLoading, saveSuccess } = useLawnSize();
   const { toast } = useToast();
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -41,9 +40,7 @@ export default function Home() {
     );
   }, [toast]);
 
-  const currentDate = new Date();
-  const yearStart = startOfYear(currentDate);
-  const currentWeekNumber = differenceInWeeks(currentDate, yearStart) + 1;
+  const currentWeekNumber = useCurrentWeek();
   
   // State for selected week (defaults to current week)
   const [selectedWeek, setSelectedWeek] = useState(currentWeekNumber);
@@ -64,51 +61,6 @@ export default function Home() {
   // Check if this is a rest week or has application data
   const isRestWeek = currentWeek?.isRestWeek === 1;
   const hasApplicationDays = currentWeek && Array.isArray(currentWeek.applicationDays) && currentWeek.applicationDays.length > 0;
-
-  // Fetch user data to get saved lawn size (only when authenticated)
-  const { data: user, isLoading: isUserLoading } = useQuery<User>({
-    queryKey: ['/api/auth/user'],
-    enabled: isAuthenticated,
-  });
-
-  // Update lawn size mutation (only used when authenticated)
-  const updateLawnSizeMutation = useMutation({
-    mutationFn: async (newSize: number) => {
-      setSaveSuccess(false);
-      return await apiRequest('PUT', '/api/user/lawn-size', { lawnSize: newSize });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
-      setSaveSuccess(true);
-      toast({
-        title: "Lawn size saved",
-        description: "Your lawn size has been updated successfully.",
-      });
-    },
-    onError: (error: Error) => {
-      setSaveSuccess(false);
-      toast({
-        title: "Error saving lawn size",
-        description: error.message || "Failed to save lawn size. Please try again.",
-        variant: "destructive",
-      });
-    }
-  });
-
-  // Update local state when user data is loaded
-  useEffect(() => {
-    if (user?.lawnSize) {
-      setLawnSize(user.lawnSize);
-    }
-  }, [user?.lawnSize]);
-
-  // Handle lawn size changes
-  const handleLawnSizeChange = (newSize: number) => {
-    setLawnSize(newSize);
-    if (isAuthenticated) {
-      updateLawnSizeMutation.mutate(newSize);
-    }
-  };
 
   const handleLogin = () => {
     window.location.href = "/login";
@@ -154,8 +106,8 @@ export default function Home() {
             <CurrentWeekDisplay />
             <LawnSizeCalculator 
               currentSize={lawnSize} 
-              onSizeChange={handleLawnSizeChange}
-              isSaving={updateLawnSizeMutation.isPending}
+              onSizeChange={setLawnSize}
+              isSaving={isSaving}
               isLoading={isUserLoading}
               saveSuccess={saveSuccess}
             />

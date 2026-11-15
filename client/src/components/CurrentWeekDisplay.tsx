@@ -1,4 +1,5 @@
-import { format, startOfYear, differenceInWeeks } from "date-fns";
+import { format } from "date-fns";
+import { getCurrentWeekNumber } from "@/lib/week";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, Clock } from "lucide-react";
@@ -9,8 +10,7 @@ interface CurrentWeekDisplayProps {
 
 export default function CurrentWeekDisplay({ date = new Date() }: CurrentWeekDisplayProps) {
   const currentDate = date;
-  const yearStart = startOfYear(currentDate);
-  const weekNumber = differenceInWeeks(currentDate, yearStart) + 1;
+  const weekNumber = getCurrentWeekNumber(currentDate);
   const month = format(currentDate, "MMMM");
   const formattedDate = format(currentDate, "EEEE, MMMM do, yyyy");
   
