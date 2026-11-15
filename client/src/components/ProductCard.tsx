@@ -12,6 +12,7 @@ import MarkAsAppliedDialog, { AppliedBadge } from "./MarkAsAppliedDialog";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
 
 interface InventoryItem {
   id: string;
@@ -103,7 +104,17 @@ export default function ProductCard({
       queryClient.invalidateQueries({ queryKey: ["/api/inventory", user?.id] });
       toast({
         title: "Week marked as applied",
-        description: `Week ${weekNumber} has been marked as applied and inventory updated.`
+        description: `Week ${weekNumber} has been marked as applied and inventory updated.`,
+        duration: 6000,
+        action: (
+          <ToastAction
+            altText="Undo application"
+            onClick={() => undoMutation.mutate()}
+            data-testid="button-toast-undo"
+          >
+            Undo
+          </ToastAction>
+        ),
       });
       setIsDialogOpen(false);
     },
@@ -308,6 +319,10 @@ export default function ProductCard({
           <>
             <Separator />
             
+            <div
+              className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom)+0.5rem)] z-30 -mx-2 rounded-xl bg-background/95 p-2 backdrop-blur lg:bottom-4"
+              data-testid="apply-bar"
+            >
             {isApplied ? (
               <AppliedBadge
                 weekNumber={weekNumber}
@@ -326,6 +341,7 @@ export default function ProductCard({
                 Mark Week {weekNumber} as Applied
               </Button>
             )}
+            </div>
           </>
         )}
 
