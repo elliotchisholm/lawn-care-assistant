@@ -24,6 +24,7 @@ import ResponsiveSheet from "@/components/ResponsiveSheet";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { NZLA_PRODUCTS } from "@shared/products";
+import { sameProduct } from "@/lib/productMatching";
 import { useAuth } from "@/hooks/useAuth";
 import { quantitySchema, MAX_QUANTITY, MAX_NOTES_LENGTH } from "@shared/validation";
 
@@ -49,14 +50,14 @@ const granularUnits = [
 
 // Get appropriate units based on product type
 function getUnitsForProduct(productName: string) {
-  const product = NZLA_PRODUCTS.find(p => p.name === productName);
+  const product = NZLA_PRODUCTS.find(p => sameProduct(p.name, productName));
   if (!product) return liquidUnits; // Default to liquid
   return product.unit === "g" ? granularUnits : liquidUnits;
 }
 
 // Get default unit for a product
 function getDefaultUnitForProduct(productName: string) {
-  const product = NZLA_PRODUCTS.find(p => p.name === productName);
+  const product = NZLA_PRODUCTS.find(p => sameProduct(p.name, productName));
   if (!product) return "ml"; // Default to ml
   return product.unit === "g" ? "g" : "ml";
 }
