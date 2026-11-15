@@ -6,7 +6,6 @@ import { useLawnSize } from "@/lib/LawnSizeContext";
 import { useCurrentWeek } from "@/hooks/useCurrentWeek";
 import { useToast } from "@/hooks/use-toast";
 import { type WeeklySchedule, type ApplicationDay } from "@shared/schema";
-import Header from "@/components/Header";
 import HeroSection from "@/components/HeroSection";
 import CurrentWeekDisplay from "@/components/CurrentWeekDisplay";
 import LawnSizeCalculator from "@/components/LawnSizeCalculator";
@@ -67,9 +66,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      
+    <>
       <main className="container mx-auto px-3 sm:px-4 py-4 md:py-6 space-y-4 md:space-y-6">
         {/* Hero Section */}
         <HeroSection />
@@ -267,6 +264,6 @@ export default function Home() {
           </div>
         </div>
       </main>
-    </div>
+    </>
   );
 }
