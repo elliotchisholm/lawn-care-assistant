@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Droplets, Beaker, CheckCircle, XCircle, AlertTriangle, Check } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { getStockInUnit } from "@/lib/productMatching";
+import { getPooledStock } from "@/lib/productMatching";
+import { planWeekAdjustments } from "@/lib/weekAdjustments";
 import type { ApplicationDay, InventoryAdjustment } from "@shared/schema";
 import MarkAsAppliedDialog, { AppliedBadge } from "./MarkAsAppliedDialog";
 import { useAuth } from "@/hooks/useAuth";
@@ -149,8 +150,9 @@ export default function ProductCard({
   });
 
   // Helper function to get inventory status for a product
-  const getInventoryStatus = (productName: string, requiredQuantity: number, unit: string) => {
-    const { total: totalConverted, itemCount } = getStockInUnit(inventory, productName, unit);
+  // When the schedule offers an alternative product, either can be applied, so stock is pooled.
+  const getInventoryStatus = (productName: string, requiredQuantity: number, unit: string, alternativeName?: string | null) => {
+    const { total: totalConverted, itemCount } = getPooledStock(inventory, productName, alternativeName, unit);
 
     if (itemCount === 0) {
       return {
@@ -231,7 +233,7 @@ export default function ProductCard({
               <div className="space-y-3">
                 {day.products.map((product, productIndex) => {
                   const scaledQuantity = product.quantity * scaleFactor;
-                  const inventoryStatus = getInventoryStatus(product.name, scaledQuantity, product.unit);
+                  const inventoryStatus = getInventoryStatus(product.name, scaledQuantity, product.unit, product.alternativeName);
                   // Signed-out visitors have no inventory, so stock status would be misleading
                   const showStock = isAuthenticated;
                   const statusDisplay = showStock
@@ -350,25 +352,7 @@ export default function ProductCard({
           isOpen={isDialogOpen}
           onClose={() => setIsDialogOpen(false)}
           weekNumber={weekNumber}
-          adjustments={
-            // Calculate adjustments from applicationDays
-            applicationDays.flatMap(day =>
-              day.products.map(product => {
-                const scaledQuantity = Math.round(product.quantity * scaleFactor);
-                const inventoryStatus = getInventoryStatus(product.name, scaledQuantity, product.unit);
-                const newInventory = inventoryStatus.currentQuantity - scaledQuantity;
-                
-                return {
-                  productName: product.name,
-                  amountToDeduct: scaledQuantity,
-                  unit: product.unit,
-                  currentInventory: inventoryStatus.currentQuantity,
-                  newInventory: Math.max(0, newInventory),
-                  isInsufficient: newInventory < 0,
-                };
-              })
-            )
-          }
+          adjustments={planWeekAdjustments(applicationDays, inventory, scaleFactor)}
           onConfirm={(adjustments) => {
             // Convert dialog adjustments to backend format
             const backendAdjustments: InventoryAdjustment[] = adjustments.map(adj => ({

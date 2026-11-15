@@ -1,5 +1,5 @@
 import { normalizeProductName } from "@shared/canonicalProductNames";
-import { findByProduct, getStockInUnit, sameProduct } from "@/lib/productMatching";
+import { alternativeOf, findByProduct, getPooledStock, sameProduct } from "@/lib/productMatching";
 import type { WeeklySchedule } from "@shared/schema";
 import { calculatePackagePurchase, formatPackageRecommendation, type PackageSize } from "@/lib/packageCalculator";
 
@@ -16,6 +16,8 @@ export interface PurchaseInventoryItem {
 
 export interface PurchaseRecommendation {
   productName: string;
+  /** Interchangeable product (for example Wetter 3W for NZLA Wetter); stock of both is pooled. */
+  alternativeName?: string;
   unit: string;
   currentStock: number;
   totalNeeded: number;
@@ -47,7 +49,7 @@ export function computePurchaseRecommendations({
     return [];
   }
 
-  const productTotals = new Map<string, { productName: string; total: number; unit: string; applications: number }>();
+  const productTotals = new Map<string, { productName: string; alternativeName?: string; total: number; unit: string; applications: number }>();
 
   // Calculate future product needs using API data
   for (let i = 0; i < weeksToAnalyze; i++) {
@@ -66,12 +68,14 @@ export function computePurchaseRecommendations({
           day.products.forEach((product: any) => {
             const scaledQuantity = product.quantity * scaleFactor;
             const productName = normalizeProductName(product.name);
+            const alternativeName = alternativeOf(product.name, product.alternativeName) ?? undefined;
             const key = `${productName}\u0000${product.unit}`;
 
             if (productTotals.has(key)) {
               const existing = productTotals.get(key)!;
               productTotals.set(key, {
                 productName,
+                alternativeName: existing.alternativeName ?? alternativeName,
                 total: existing.total + scaledQuantity,
                 unit: product.unit,
                 applications: existing.applications + 1
@@ -79,6 +83,7 @@ export function computePurchaseRecommendations({
             } else {
               productTotals.set(key, {
                 productName,
+                alternativeName,
                 total: scaledQuantity,
                 unit: product.unit,
                 applications: 1
@@ -93,8 +98,9 @@ export function computePurchaseRecommendations({
   // Compare with current inventory
   const recommendations: PurchaseRecommendation[] = [];
 
-  productTotals.forEach(({ productName, total, unit }) => {
-    const currentStock = getStockInUnit(inventory, productName, unit).total;
+  productTotals.forEach(({ productName, alternativeName, total, unit }) => {
+    // Either product can be applied, so stock of the alternative counts too
+    const currentStock = getPooledStock(inventory, productName, alternativeName, unit).total;
 
     const shortfall = total - currentStock;
 
@@ -138,6 +144,7 @@ export function computePurchaseRecommendations({
 
       recommendations.push({
         productName,
+        alternativeName,
         unit,
         currentStock,
         totalNeeded: total,
@@ -177,7 +184,9 @@ export function getStockWarning(
   recommendations: PurchaseRecommendation[],
   productName: string,
 ): StockWarning | null {
-  const rec = recommendations.find((r) => sameProduct(r.productName, productName));
+  const rec = recommendations.find(
+    (r) => sameProduct(r.productName, productName) || (r.alternativeName !== undefined && sameProduct(r.alternativeName, productName)),
+  );
   if (!rec) return null;
   if (rec.currentStock <= 0) return { level: "out", weeksLeft: 0 };
   return { level: "low", weeksLeft: rec.weeksUntilEmpty };
