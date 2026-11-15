@@ -36,7 +36,7 @@ export default function WeekPicker({ value, currentWeek, onChange }: WeekPickerP
         variant="outline"
         className="h-12 flex-1 justify-center gap-2 text-base"
         onClick={() => setOpen(true)}
-        data-testid="button-week-open"
+        data-testid="select-week"
       >
         <Calendar className="h-4 w-4" aria-hidden="true" />
         Week {value}
@@ -68,7 +68,7 @@ export default function WeekPicker({ value, currentWeek, onChange }: WeekPickerP
                 onChange(week);
                 setOpen(false);
               }}
-              data-testid={`week-option-${week}`}
+              data-testid={`option-week-${week}`}
             >
               {week}
             </Button>
