@@ -1,6 +1,8 @@
 import { Link, useLocation } from "wouter";
 import { Lock } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useLawnSize } from "@/lib/LawnSizeContext";
+import { usePurchaseRecommendations } from "@/hooks/usePurchaseRecommendations";
 import { NAV_ITEMS, isActivePath } from "@/lib/navItems";
 import { cn } from "@/lib/utils";
 
@@ -8,6 +10,9 @@ import { cn } from "@/lib/utils";
 export default function SideNav() {
   const [location] = useLocation();
   const { isAuthenticated } = useAuth();
+  const { lawnSize } = useLawnSize();
+  const { recommendations } = usePurchaseRecommendations(lawnSize);
+  const buyCount = isAuthenticated ? recommendations.length : 0;
 
   return (
     <nav
@@ -33,6 +38,15 @@ export default function SideNav() {
                 <span className="flex-1">{label}</span>
                 {requiresAuth && !isAuthenticated ? (
                   <Lock className="h-4 w-4" aria-label="Sign in required" />
+                ) : null}
+                {path === "/buy" && buyCount > 0 ? (
+                  <span
+                    className="flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-xs font-semibold text-destructive-foreground"
+                    aria-label={`${buyCount} to buy`}
+                    data-testid="side-badge-buy-count"
+                  >
+                    {buyCount}
+                  </span>
                 ) : null}
               </Link>
             </li>

@@ -5,6 +5,7 @@ import { isActivePath } from '@/lib/navItems';
 
 const mockUseAuth = vi.fn();
 vi.mock('@/hooks/useAuth', () => ({ useAuth: () => mockUseAuth() }));
+vi.mock('@/lib/LawnSizeContext', () => ({ useLawnSize: () => ({ lawnSize: 100 }) }));
 
 describe('AppShell', () => {
   beforeEach(() => {
