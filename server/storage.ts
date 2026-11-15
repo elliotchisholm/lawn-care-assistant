@@ -40,6 +40,7 @@ export interface IStorage {
   
   // Applied weeks methods
   getAppliedWeek(userId: string, weekNumber: number): Promise<AppliedWeek | undefined>;
+  getAppliedWeekSummaries(userId: string): Promise<{ weekNumber: number; appliedAt: Date }[]>;
   markWeekAsApplied(userId: string, weekNumber: number, adjustments: InventoryAdjustment[]): Promise<AppliedWeek>;
   undoWeekApplication(userId: string, weekNumber: number): Promise<boolean>;
   
@@ -242,6 +243,20 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       if (isEmptyNeonResultError(error)) {
         return undefined;
+      }
+      throw error;
+    }
+  }
+
+  async getAppliedWeekSummaries(userId: string): Promise<{ weekNumber: number; appliedAt: Date }[]> {
+    try {
+      return await db.select({ weekNumber: appliedWeeks.weekNumber, appliedAt: appliedWeeks.appliedAt })
+        .from(appliedWeeks)
+        .where(eq(appliedWeeks.userId, userId))
+        .orderBy(appliedWeeks.weekNumber);
+    } catch (error) {
+      if (isEmptyNeonResultError(error)) {
+        return [];
       }
       throw error;
     }

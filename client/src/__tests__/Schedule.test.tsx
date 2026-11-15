@@ -6,10 +6,11 @@ import WeeklySchedule from '@/components/WeeklySchedule';
 import WeekDetailSheet from '@/components/WeekDetailSheet';
 import { groupByMonth } from '@/lib/scheduleUtils';
 import { parseWeekParam } from '@/lib/week';
+import { appliedWeeksListKey } from '@/hooks/useAppliedWeeks';
 import type { WeeklySchedule as Entry } from '@shared/schema';
 
 vi.mock('@/hooks/use-mobile', () => ({ useIsMobile: () => false }));
-vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: null, isAuthenticated: false, isLoading: false }) }));
+vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'u1' }, isAuthenticated: true, isLoading: false }) }));
 
 const mk = (weekNumber: number, month: string, weekOfMonth: number, rest = 0, products: any[] = []): Entry =>
   ({
@@ -21,9 +22,10 @@ const mk = (weekNumber: number, month: string, weekOfMonth: number, rest = 0, pr
 const liquid = { name: 'Liquid Iron', alternativeName: 'Iron Plus', quantity: 20, unit: 'ml', type: 'liquid', productNotes: null };
 const data = [mk(1, 'January', 1, 0, [liquid]), mk(2, 'January', 2, 1), mk(5, 'February', 1, 0, [liquid])];
 
-function wrap(children: ReactNode) {
+function wrap(children: ReactNode, applied: number[] = []) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   client.setQueryData(['/api/schedule'], data);
+  client.setQueryData(appliedWeeksListKey('u1'), applied.map((weekNumber) => ({ weekNumber, appliedAt: '2026-11-01T00:00:00Z' })));
   return render(<QueryClientProvider client={client}>{children}</QueryClientProvider>);
 }
 
@@ -53,6 +55,18 @@ describe('WeeklySchedule', () => {
     expect(screen.getByText('Current')).toBeInTheDocument();
   });
 
+  it('ticks weeks the user has applied and only those', () => {
+    wrap(<WeeklySchedule currentWeek={5} />, [1, 5]);
+    expect(screen.getByTestId('badge-applied-1')).toHaveTextContent('Applied');
+    expect(screen.getByTestId('badge-applied-5')).toBeInTheDocument();
+    expect(screen.queryByTestId('badge-applied-2')).not.toBeInTheDocument();
+  });
+
+  it('shows no ticks when nothing is applied', () => {
+    wrap(<WeeklySchedule currentWeek={5} />);
+    expect(screen.queryByTestId('badge-applied-1')).not.toBeInTheDocument();
+  });
+
   it('calls onSelectWeek when a row is tapped', () => {
     const onSelect = vi.fn();
     wrap(<WeeklySchedule currentWeek={5} onSelectWeek={onSelect} />);
@@ -70,6 +84,11 @@ describe('WeekDetailSheet', () => {
     expect(screen.getByText('Water in')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('button-open-in-this-week'));
     expect(onOpen).toHaveBeenCalledWith(1);
+  });
+
+  it('shows the Applied badge for an applied week', () => {
+    wrap(<WeekDetailSheet entry={data[0]} currentWeek={5} onClose={() => {}} onOpenInThisWeek={() => {}} />, [1]);
+    expect(screen.getByTestId('badge-week-applied')).toBeInTheDocument();
   });
 
   it('shows rest week copy and nothing for a null entry', () => {

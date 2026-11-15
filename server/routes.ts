@@ -174,6 +174,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Applied weeks routes - tracking weekly applications
   
+  // List which weeks the authenticated user has applied (week number and date only)
+  app.get("/api/applied-weeks", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      res.json(await storage.getAppliedWeekSummaries(userId));
+    } catch (error) {
+      console.error("Error listing applied weeks:", error);
+      res.status(500).json({ error: "Failed to list applied weeks" });
+    }
+  });
+
   // Check if a specific week is applied for authenticated user
   app.get("/api/applied-weeks/:weekNumber", isAuthenticated, async (req: any, res) => {
     try {
