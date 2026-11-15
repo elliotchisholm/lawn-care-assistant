@@ -19,6 +19,10 @@ import InventoryForm, { type InventoryItem } from "@/components/InventoryForm";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
+import { useLawnSize } from "@/lib/LawnSizeContext";
+import { usePurchaseRecommendations } from "@/hooks/usePurchaseRecommendations";
+import { LOW_STOCK_WEEKS, getStockWarning, describeStockWarning } from "@/lib/purchaseRecommendations";
+import { cn } from "@/lib/utils";
 
 const slug = (name: string) => name.replace(/\s+/g, "-").toLowerCase();
 
@@ -28,6 +32,8 @@ export default function InventoryManager() {
   const [pendingDelete, setPendingDelete] = useState<InventoryItem | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
+  const { lawnSize } = useLawnSize();
+  const { recommendations } = usePurchaseRecommendations(lawnSize, LOW_STOCK_WEEKS);
 
   // Fetch inventory data (user-scoped to prevent cache staleness)
   const { data: inventory = [], isLoading } = useQuery<InventoryItem[]>({
@@ -67,6 +73,8 @@ export default function InventoryManager() {
       });
     },
   });
+
+  const lowCount = inventory.filter((item) => getStockWarning(recommendations, item.productName)).length;
 
   const handleEdit = (item: InventoryItem) => {
     setEditingItem(item);
@@ -121,9 +129,16 @@ export default function InventoryManager() {
     <>
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5" />
-            Product Inventory
+          <CardTitle className="flex items-center justify-between gap-2">
+            <span className="flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              Product Inventory
+            </span>
+            {lowCount > 0 && (
+              <Badge variant="destructive" className="text-xs" data-testid="badge-low-stock-count">
+                {lowCount} low
+              </Badge>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent className="pb-24">
@@ -135,10 +150,15 @@ export default function InventoryManager() {
             </div>
           ) : (
             <div className="space-y-3">
-              {inventory.map((item) => (
+              {inventory.map((item) => {
+                const warning = getStockWarning(recommendations, item.productName);
+                return (
                 <div
                   key={item.id}
-                  className="flex min-h-16 items-center justify-between gap-2 p-3 border rounded-xl"
+                  className={cn(
+                    "flex min-h-16 items-center justify-between gap-2 p-3 border rounded-xl",
+                    warning && "border-destructive/30 bg-destructive/5 dark:bg-destructive/10",
+                  )}
                   data-testid={`inventory-item-${slug(item.productName)}`}
                 >
                   <div className="min-w-0 flex-1">
@@ -150,6 +170,14 @@ export default function InventoryManager() {
                         {item.currentQuantity} {item.unit}
                       </Badge>
                     </div>
+                    {warning && (
+                      <p
+                        className="mt-1 text-sm font-medium text-destructive"
+                        data-testid={`text-stock-warning-${slug(item.productName)}`}
+                      >
+                        {describeStockWarning(warning)}
+                      </p>
+                    )}
                     {item.notes && (
                       <p className="text-sm text-muted-foreground mt-1">
                         {item.notes}
@@ -183,7 +211,8 @@ export default function InventoryManager() {
                     </Button>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>

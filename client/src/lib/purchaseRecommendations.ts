@@ -164,3 +164,31 @@ export function urgencyOf(rec: PurchaseRecommendation): Urgency {
   if (rec.weeksUntilEmpty === 0) return "now";
   return rec.weeksUntilEmpty <= 4 ? "soon" : "later";
 }
+
+/** An item counts as low when it would run out within this many weeks of scheduled applications. */
+export const LOW_STOCK_WEEKS = 4;
+
+export interface StockWarning {
+  level: "out" | "low";
+  /** Whole weeks of stock left at the scheduled rate (0 when under a week). */
+  weeksLeft: number;
+}
+
+/**
+ * Warning for a stocked product, from recommendations computed over LOW_STOCK_WEEKS.
+ * Returns null when the product is not short within that window.
+ */
+export function getStockWarning(
+  recommendations: PurchaseRecommendation[],
+  productName: string,
+): StockWarning | null {
+  const rec = recommendations.find((r) => r.productName === productName);
+  if (!rec) return null;
+  if (rec.currentStock <= 0) return { level: "out", weeksLeft: 0 };
+  return { level: "low", weeksLeft: rec.weeksUntilEmpty };
+}
+
+export function describeStockWarning(warning: StockWarning): string {
+  if (warning.level === "out") return "Out of stock";
+  return warning.weeksLeft < 1 ? "Low: under 1 week left" : `Low: about ${warning.weeksLeft} ${warning.weeksLeft === 1 ? "week" : "weeks"} left`;
+}

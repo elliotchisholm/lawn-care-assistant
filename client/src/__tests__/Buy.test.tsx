@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import PurchaseRecommendations from '@/components/PurchaseRecommendations';
 import TabBar from '@/components/TabBar';
-import { computePurchaseRecommendations, urgencyOf } from '@/lib/purchaseRecommendations';
+import { computePurchaseRecommendations, urgencyOf, getStockWarning, describeStockWarning } from '@/lib/purchaseRecommendations';
 import type { WeeklySchedule } from '@shared/schema';
 
 vi.mock('@/hooks/useAuth', () => ({
@@ -54,6 +54,26 @@ describe('computePurchaseRecommendations', () => {
   it('classifies urgency', () => {
     const rec = (weeksUntilEmpty: number) => ({ weeksUntilEmpty }) as any;
     expect([urgencyOf(rec(0)), urgencyOf(rec(3)), urgencyOf(rec(9))]).toEqual(['now', 'soon', 'later']);
+  });
+});
+
+describe('getStockWarning', () => {
+  const rec = (productName: string, currentStock: number, weeksUntilEmpty: number) => ({ productName, currentStock, weeksUntilEmpty }) as any;
+
+  it('returns null for products not short', () => {
+    expect(getStockWarning([rec('A', 10, 1)], 'B')).toBeNull();
+  });
+  it('flags zero stock as out', () => {
+    expect(getStockWarning([rec('A', 0, 0)], 'A')).toEqual({ level: 'out', weeksLeft: 0 });
+  });
+  it('flags short stock as low with weeks left', () => {
+    expect(getStockWarning([rec('A', 50, 2)], 'A')).toEqual({ level: 'low', weeksLeft: 2 });
+  });
+  it('describes each case', () => {
+    expect(describeStockWarning({ level: 'out', weeksLeft: 0 })).toBe('Out of stock');
+    expect(describeStockWarning({ level: 'low', weeksLeft: 0 })).toBe('Low: under 1 week left');
+    expect(describeStockWarning({ level: 'low', weeksLeft: 1 })).toBe('Low: about 1 week left');
+    expect(describeStockWarning({ level: 'low', weeksLeft: 3 })).toBe('Low: about 3 weeks left');
   });
 });
 
