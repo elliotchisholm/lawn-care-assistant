@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Plus, Pencil, Trash2, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -6,383 +6,26 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import InventoryForm, { type InventoryItem } from "@/components/InventoryForm";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
-import { NZLA_PRODUCTS } from "@shared/products";
 import { useAuth } from "@/hooks/useAuth";
-import { quantitySchema, MAX_QUANTITY, MAX_NOTES_LENGTH } from "@shared/validation";
 
-
-// Form validation schemas
-const inventoryFormSchema = z.object({
-  productName: z.string().min(1, "Product name is required"),
-  currentQuantity: quantitySchema,
-  unit: z.string().min(1, "Unit is required"),
-  notes: z.string().max(MAX_NOTES_LENGTH).optional(),
-});
-
-type InventoryFormData = z.infer<typeof inventoryFormSchema>;
-
-const liquidUnits = [
-  { value: "ml", label: "ml" },
-  { value: "L", label: "L" },
-];
-
-const granularUnits = [
-  { value: "g", label: "g" },
-  { value: "kg", label: "kg" },
-];
-
-// Get appropriate units based on product type
-function getUnitsForProduct(productName: string) {
-  const product = NZLA_PRODUCTS.find(p => p.name === productName);
-  if (!product) return liquidUnits; // Default to liquid
-  return product.unit === "g" ? granularUnits : liquidUnits;
-}
-
-// Get default unit for a product
-function getDefaultUnitForProduct(productName: string) {
-  const product = NZLA_PRODUCTS.find(p => p.name === productName);
-  if (!product) return "ml"; // Default to ml
-  return product.unit === "g" ? "g" : "ml";
-}
-
-interface InventoryItem {
-  id: string;
-  userId: string;
-  productName: string;
-  currentQuantity: string;
-  unit: string;
-  notes?: string;
-  lastUpdated: string;
-  purchaseDate?: string;
-}
-
-interface InventoryFormProps {
-  item?: InventoryItem;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}
-
-function InventoryForm({ item, open, onOpenChange }: InventoryFormProps) {
-  const { toast } = useToast();
-  const { user } = useAuth();
-  const form = useForm<InventoryFormData>({
-    resolver: zodResolver(inventoryFormSchema),
-    defaultValues: {
-      productName: "",
-      currentQuantity: "",
-      unit: "ml",
-      notes: "",
-    },
-  });
-
-  // Reset form when item changes or dialog opens/closes
-  useEffect(() => {
-    if (open) {
-      if (item) {
-        // Editing existing item - populate form with item data
-        form.reset({
-          productName: item.productName,
-          currentQuantity: item.currentQuantity,
-          unit: item.unit,
-          notes: item.notes || "",
-        });
-      } else {
-        // Adding new item - reset to defaults
-        form.reset({
-          productName: "",
-          currentQuantity: "",
-          unit: "ml",
-          notes: "",
-        });
-      }
-    }
-  }, [item, open, form]);
-
-  const createMutation = useMutation({
-    mutationFn: async (data: InventoryFormData) => {
-      // Validate that quantity is a valid positive number for new items
-      const quantity = parseFloat(data.currentQuantity);
-      if (isNaN(quantity) || quantity <= 0) {
-        throw new Error("Quantity must be a positive number when adding new inventory");
-      }
-      
-      const response = await fetch("/api/inventory", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          productName: data.productName,
-          currentQuantity: data.currentQuantity, // Send as string for decimal precision
-          unit: data.unit,
-          notes: data.notes || undefined,
-        }),
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: "Failed to create inventory item" }));
-        
-        // Handle Zod validation errors with specific field messages
-        if (errorData.details && Array.isArray(errorData.details)) {
-          const fieldErrors = errorData.details.map((err: any) => 
-            `${err.path?.join('.')} ${err.message}`
-          ).join(', ');
-          throw new Error(fieldErrors);
-        }
-        
-        throw new Error(errorData.error || errorData.message || "Failed to create inventory item");
-      }
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/inventory", user?.id] });
-      toast({ 
-        title: "Success", 
-        description: "Inventory item added successfully",
-      });
-      onOpenChange(false);
-      form.reset();
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to add inventory item. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: async (data: InventoryFormData) => {
-      if (!item) throw new Error("No item to update");
-      
-      // Validate that quantity is a valid non-negative number (allow 0 for used-up inventory)
-      const quantity = parseFloat(data.currentQuantity);
-      if (isNaN(quantity) || quantity < 0) {
-        throw new Error("Quantity cannot be negative");
-      }
-      
-      const response = await fetch(`/api/inventory/${item.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          productName: data.productName,
-          currentQuantity: data.currentQuantity, // Send as string for decimal precision
-          unit: data.unit,
-          notes: data.notes || undefined,
-        }),
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: "Failed to update inventory item" }));
-        
-        // Handle Zod validation errors with specific field messages
-        if (errorData.details && Array.isArray(errorData.details)) {
-          const fieldErrors = errorData.details.map((err: any) => 
-            `${err.path?.join('.')} ${err.message}`
-          ).join(', ');
-          throw new Error(fieldErrors);
-        }
-        
-        throw new Error(errorData.error || errorData.message || "Failed to update inventory item");
-      }
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/inventory", user?.id] });
-      toast({ 
-        title: "Success", 
-        description: "Inventory item updated successfully",
-      });
-      onOpenChange(false);
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update inventory item. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const onSubmit = (data: InventoryFormData) => {
-    if (item) {
-      updateMutation.mutate(data);
-    } else {
-      createMutation.mutate(data);
-    }
-  };
-
-  const isLoading = createMutation.isPending || updateMutation.isPending;
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>{item ? "Edit" : "Add"} Inventory Item</DialogTitle>
-          <DialogDescription>
-            {item ? "Update the details for this inventory item." : "Add a new product to your inventory."}
-          </DialogDescription>
-        </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="productName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Product Name</FormLabel>
-                  <FormControl>
-                    <Select 
-                      value={field.value} 
-                      onValueChange={(value) => {
-                        field.onChange(value);
-                        // Auto-set the appropriate unit for this product
-                        form.setValue("unit", getDefaultUnitForProduct(value));
-                      }}
-                    >
-                      <SelectTrigger data-testid="select-product">
-                        <SelectValue placeholder="Select a product" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {NZLA_PRODUCTS.map((product) => (
-                          <SelectItem key={product.name} value={product.name}>
-                            {product.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="currentQuantity"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Quantity</FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder="1000" 
-                        type="number"
-                        min="0"
-                        max={MAX_QUANTITY}
-                        step="0.01"
-                        data-testid="input-quantity"
-                        {...field} 
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="unit"
-                render={({ field }) => {
-                  const selectedProduct = form.watch("productName");
-                  const availableUnits = getUnitsForProduct(selectedProduct);
-                  return (
-                    <FormItem>
-                      <FormLabel>Unit</FormLabel>
-                      <FormControl>
-                        <Select value={field.value} onValueChange={field.onChange}>
-                          <SelectTrigger data-testid="select-unit">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {availableUnits.map((unit) => (
-                              <SelectItem key={unit.value} value={unit.value}>
-                                {unit.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  );
-                }}
-              />
-            </div>
-
-            <FormField
-              control={form.control}
-              name="notes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Notes (Optional)</FormLabel>
-                  <FormControl>
-                    <Input 
-                      placeholder="Purchased on..." 
-                      maxLength={MAX_NOTES_LENGTH}
-                      data-testid="input-notes"
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                disabled={isLoading}
-              >
-                Cancel
-              </Button>
-              <Button 
-                type="submit" 
-                disabled={isLoading}
-                data-testid="button-save-inventory"
-              >
-                {isLoading ? "Saving..." : item ? "Update" : "Add"}
-              </Button>
-            </div>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
-  );
-}
+const slug = (name: string) => name.replace(/\s+/g, "-").toLowerCase();
 
 export default function InventoryManager() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | undefined>();
+  const [pendingDelete, setPendingDelete] = useState<InventoryItem | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -398,13 +41,12 @@ export default function InventoryManager() {
     },
   });
 
-  // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const response = await fetch(`/api/inventory/${id}`, {
         method: "DELETE",
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: "Failed to delete inventory item" }));
         throw new Error(errorData.error || errorData.message || "Failed to delete inventory item");
@@ -412,8 +54,8 @@ export default function InventoryManager() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/inventory", user?.id] });
-      toast({ 
-        title: "Success", 
+      toast({
+        title: "Success",
         description: "Inventory item deleted successfully",
       });
     },
@@ -436,12 +78,6 @@ export default function InventoryManager() {
     setIsFormOpen(true);
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm("Are you sure you want to delete this inventory item?")) {
-      deleteMutation.mutate(id);
-    }
-  };
-
   const handleFormClose = (open: boolean) => {
     setIsFormOpen(open);
     if (!open) {
@@ -453,18 +89,15 @@ export default function InventoryManager() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Package className="h-5 w-5" />
-              Product Inventory
-            </div>
-            <Skeleton className="h-9 w-[120px]" />
+          <CardTitle className="flex items-center gap-2">
+            <Package className="h-5 w-5" />
+            Product Inventory
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="flex items-center justify-between p-3 border rounded-lg">
+              <div key={i} className="flex items-center justify-between p-3 border rounded-xl">
                 <div className="flex-1 space-y-2">
                   <div className="flex items-center gap-3">
                     <Skeleton className="h-5 w-32" />
@@ -473,8 +106,8 @@ export default function InventoryManager() {
                   <Skeleton className="h-4 w-24" />
                 </div>
                 <div className="flex items-center gap-2">
-                  <Skeleton className="h-8 w-8" />
-                  <Skeleton className="h-8 w-8" />
+                  <Skeleton className="h-11 w-11" />
+                  <Skeleton className="h-11 w-11" />
                 </div>
               </div>
             ))}
@@ -485,82 +118,112 @@ export default function InventoryManager() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
             <Package className="h-5 w-5" />
             Product Inventory
-          </div>
-          <Button onClick={handleAdd} className="min-h-12" data-testid="button-add-inventory">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Product
-          </Button>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        {inventory.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>No inventory items yet</p>
-            <p className="text-sm">Add your first product to get started</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {inventory.map((item) => (
-              <div
-                key={item.id}
-                className="flex items-center justify-between p-3 border rounded-lg"
-                data-testid={`inventory-item-${item.productName.replace(/\s+/g, '-').toLowerCase()}`}
-              >
-                <div className="flex-1">
-                  <div className="flex items-center gap-3">
-                    <h4 className="font-medium" data-testid="text-product-name">
-                      {item.productName}
-                    </h4>
-                    <Badge variant="secondary" data-testid="text-quantity">
-                      {item.currentQuantity} {item.unit}
-                    </Badge>
-                  </div>
-                  {item.notes && (
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {item.notes}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pb-24">
+          {inventory.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>No inventory items yet</p>
+              <p className="text-sm">Add your first product to get started</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {inventory.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex min-h-16 items-center justify-between gap-2 p-3 border rounded-xl"
+                  data-testid={`inventory-item-${slug(item.productName)}`}
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                      <h4 className="font-medium" data-testid="text-product-name">
+                        {item.productName}
+                      </h4>
+                      <Badge variant="secondary" data-testid="text-quantity">
+                        {item.currentQuantity} {item.unit}
+                      </Badge>
+                    </div>
+                    {item.notes && (
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {item.notes}
+                      </p>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      Updated: {new Date(item.lastUpdated).toLocaleDateString()}
                     </p>
-                  )}
-                  <p className="text-xs text-muted-foreground">
-                    Updated: {new Date(item.lastUpdated).toLocaleDateString()}
-                  </p>
+                  </div>
+                  <div className="flex shrink-0 items-center">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-11 w-11"
+                      aria-label={`Edit ${item.productName}`}
+                      onClick={() => handleEdit(item)}
+                      data-testid={`button-edit-${slug(item.productName)}`}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-11 w-11"
+                      aria-label={`Delete ${item.productName}`}
+                      onClick={() => setPendingDelete(item)}
+                      disabled={deleteMutation.isPending}
+                      data-testid={`button-delete-${slug(item.productName)}`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleEdit(item)}
-                    data-testid={`button-edit-${item.productName.replace(/\s+/g, '-').toLowerCase()}`}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDelete(item.id)}
-                    disabled={deleteMutation.isPending}
-                    data-testid={`button-delete-${item.productName.replace(/\s+/g, '-').toLowerCase()}`}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-        <InventoryForm
-          item={editingItem}
-          open={isFormOpen}
-          onOpenChange={handleFormClose}
-        />
-      </CardContent>
-    </Card>
+      <Button
+        onClick={handleAdd}
+        size="lg"
+        aria-label="Add product"
+        className="fixed right-4 bottom-[calc(4rem+env(safe-area-inset-bottom)+1rem)] z-30 h-14 w-14 rounded-full p-0 shadow-lg lg:bottom-6 lg:right-6 lg:w-auto lg:rounded-full lg:px-6"
+        data-testid="button-add-inventory"
+      >
+        <Plus className="h-6 w-6 lg:mr-2 lg:h-4 lg:w-4" />
+        <span className="hidden lg:inline">Add Product</span>
+      </Button>
+
+      <InventoryForm item={editingItem} open={isFormOpen} onOpenChange={handleFormClose} />
+
+      <AlertDialog open={!!pendingDelete} onOpenChange={(open) => !open && setPendingDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete inventory item?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingDelete ? `${pendingDelete.productName} will be removed from your inventory.` : null}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (pendingDelete) deleteMutation.mutate(pendingDelete.id);
+                setPendingDelete(null);
+              }}
+              data-testid="button-confirm-delete"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
