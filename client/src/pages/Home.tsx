@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { useLawnSize } from "@/lib/LawnSizeContext";
 import { useCurrentWeek } from "@/hooks/useCurrentWeek";
+import { parseWeekParam } from "@/lib/week";
 import { useToast } from "@/hooks/use-toast";
 import { type WeeklySchedule, type ApplicationDay } from "@shared/schema";
 import WeekHeader from "@/components/WeekHeader";
@@ -41,7 +42,7 @@ export default function Home() {
   const currentWeekNumber = useCurrentWeek();
   
   // State for selected week (defaults to current week)
-  const [selectedWeek, setSelectedWeek] = useState(currentWeekNumber);
+  const [selectedWeek, setSelectedWeek] = useState(() => parseWeekParam(window.location.search) ?? currentWeekNumber);
   const [lawnOpen, setLawnOpen] = useState(false);
   
   // Fetch selected week's application from database
