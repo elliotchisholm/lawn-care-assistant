@@ -2,12 +2,12 @@ import { Calendar } from "lucide-react";
 import { format } from "date-fns";
 import WeeklySchedule from "@/components/WeeklySchedule";
 import Header from "@/components/Header";
+import { getCurrentWeekNumber } from "@/lib/week";
 
 export default function Schedule() {
   // Calculate current week of year (simple approximation)
   const now = new Date();
-  const start = new Date(now.getFullYear(), 0, 1);
-  const weekNumber = Math.ceil(((now.getTime() - start.getTime()) / 86400000 + 1) / 7);
+  const weekNumber = getCurrentWeekNumber(now);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950 dark:to-emerald-950">

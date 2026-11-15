@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Home from "@/pages/Home";
 import Login from "@/pages/Login";
 import NotFound from "@/pages/not-found";
+import { LawnSizeProvider } from "@/lib/LawnSizeContext";
 
 function Router() {
   return (
@@ -24,7 +25,9 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
-        <Router />
+        <LawnSizeProvider>
+          <Router />
+        </LawnSizeProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );
