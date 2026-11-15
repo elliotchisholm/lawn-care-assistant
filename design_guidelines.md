@@ -28,7 +28,9 @@
 - Small elements: p-2, m-2
 - Standard components: p-4, gap-4
 - Section spacing: py-6, mb-8
-- Page margins: px-4 (mobile), px-8 (desktop)
+- Page margins: px-3 to px-4 (mobile), container width on desktop
+- Touch targets: 44px minimum, 48 to 56px for primary actions
+- Dark mode: primary and destructive are lighter in dark mode to keep text contrast at 4.5:1 or better
 
 ### Component Library
 
@@ -40,9 +42,17 @@
 - **Application Timeline:** Visual week-by-week schedule with progress indicators
 
 **Navigation:**
-- Simple header with app title and settings icon
-- Minimal navigation focusing on current recommendations
-- Clear "Calculate" and "View Schedule" action buttons
+- App shell with a top bar (title, NZLA guide link, theme toggle, sign in or out)
+- Four screens: This week (`/`), Schedule (`/schedule`), Stock (`/stock`), Buy (`/buy`); login is `/login`
+- Bottom tab bar below 1024px (64px targets, safe-area padding, `aria-current`), left sidebar at 1024px and up
+- Stock and Buy show a lock when signed out and a locked screen with a sign-in button
+- The Buy tab shows a count of items to buy
+- Selected week is carried in the URL (`/?week=N`)
+
+**Overlays on mobile:**
+- All dialogs and forms render through `ResponsiveSheet`: bottom drawer below 768px, centred dialog above
+- Destructive confirmations use an alert dialog; apply and undo confirmations are sheets with a sticky confirm button
+- Marking a week applied shows a 6 second toast with Undo
 
 **Forms:**
 - Large, accessible input fields with clear labels
