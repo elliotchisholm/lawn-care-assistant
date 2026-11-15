@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
-import { ExternalLink, Lock, ShoppingCart, LogIn } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
+import { ExternalLink } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useLawnSize } from "@/lib/LawnSizeContext";
 import { useCurrentWeek } from "@/hooks/useCurrentWeek";
@@ -11,13 +10,10 @@ import WeekHeader from "@/components/WeekHeader";
 import ResponsiveSheet from "@/components/ResponsiveSheet";
 import LawnSizeCalculator from "@/components/LawnSizeCalculator";
 import ProductCard from "@/components/ProductCard";
-import PurchaseRecommendations from "@/components/PurchaseRecommendations";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 export default function Home() {
-  const { isAuthenticated } = useAuth();
   const { lawnSize, setLawnSize, isSaving, isLoading: isUserLoading, saveSuccess } = useLawnSize();
   const { toast } = useToast();
   useEffect(() => {
@@ -60,10 +56,6 @@ export default function Home() {
   // Check if this is a rest week or has application data
   const isRestWeek = currentWeek?.isRestWeek === 1;
   const hasApplicationDays = currentWeek && Array.isArray(currentWeek.applicationDays) && currentWeek.applicationDays.length > 0;
-
-  const handleLogin = () => {
-    window.location.href = "/login";
-  };
 
   return (
     <>
@@ -135,44 +127,6 @@ export default function Home() {
                 weekNumber={selectedWeek}
                 isCurrentWeek={selectedWeek === currentWeekNumber}
               />
-            )}
-            
-            {/* Show Purchase Recommendations when authenticated, otherwise show locked preview */}
-            {isAuthenticated ? (
-              <PurchaseRecommendations lawnSize={lawnSize} />
-            ) : (
-              <Card className="relative overflow-hidden border-2 border-dashed opacity-60">
-                <div className="absolute inset-0 bg-background/90 backdrop-blur-[2px] z-10 flex items-center justify-center">
-                  <div className="text-center space-y-3 p-6">
-                    <Lock className="h-12 w-12 mx-auto text-muted-foreground" />
-                    <div>
-                      <h3 className="font-semibold text-lg mb-1">Sign in to unlock Purchase Recommendations</h3>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        Get 8-week forecasts, automatic purchase alerts, and suggested quantities based on your inventory.
-                      </p>
-                      <Button onClick={handleLogin} data-testid="button-login-purchase" className="opacity-100">
-                        <LogIn className="h-4 w-4 mr-2" />
-                        Sign In to Unlock
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-                <CardHeader className="blur-sm">
-                  <CardTitle className="flex items-center gap-2">
-                    <ShoppingCart className="h-5 w-5 text-primary" />
-                    Purchase Recommendations
-                  </CardTitle>
-                  <CardDescription>
-                    Smart purchase planning and alerts
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="blur-sm">
-                  <div className="space-y-3">
-                    <div className="h-16 bg-muted rounded-md"></div>
-                    <div className="h-16 bg-muted rounded-md"></div>
-                  </div>
-                </CardContent>
-              </Card>
             )}
           </div>
         </div>

@@ -1,6 +1,8 @@
 import { Link, useLocation } from "wouter";
 import { Lock } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useLawnSize } from "@/lib/LawnSizeContext";
+import { usePurchaseRecommendations } from "@/hooks/usePurchaseRecommendations";
 import { NAV_ITEMS, isActivePath } from "@/lib/navItems";
 import { cn } from "@/lib/utils";
 
@@ -8,6 +10,9 @@ import { cn } from "@/lib/utils";
 export default function TabBar() {
   const [location] = useLocation();
   const { isAuthenticated } = useAuth();
+  const { lawnSize } = useLawnSize();
+  const { recommendations } = usePurchaseRecommendations(lawnSize);
+  const buyCount = isAuthenticated ? recommendations.length : 0;
 
   return (
     <nav
@@ -33,6 +38,15 @@ export default function TabBar() {
                 {label}
                 {requiresAuth && !isAuthenticated ? (
                   <Lock className="absolute right-1/4 top-2 h-3 w-3" aria-label="Sign in required" />
+                ) : null}
+                {path === "/buy" && buyCount > 0 ? (
+                  <span
+                    className="absolute right-[22%] top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground"
+                    aria-label={`${buyCount} to buy`}
+                    data-testid="badge-buy-count"
+                  >
+                    {buyCount}
+                  </span>
                 ) : null}
               </Link>
             </li>
