@@ -71,12 +71,12 @@ export default function Header({ onMenuClick }: HeaderProps) {
               target="_blank"
               rel="noopener noreferrer"
               data-testid="link-nzla-external"
-              className="hidden sm:inline-block"
             >
               <Button 
                 variant="ghost" 
                 size="sm"
                 className="gap-2"
+                aria-label="NZLA Guide"
               >
                 <span className="hidden lg:inline">NZLA Guide</span>
                 <ExternalLink className="h-4 w-4" />

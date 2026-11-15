@@ -1,7 +1,6 @@
 import { Calendar } from "lucide-react";
 import { format } from "date-fns";
 import WeeklySchedule from "@/components/WeeklySchedule";
-import Header from "@/components/Header";
 import { getCurrentWeekNumber } from "@/lib/week";
 
 export default function Schedule() {
@@ -10,9 +9,7 @@ export default function Schedule() {
   const weekNumber = getCurrentWeekNumber(now);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950 dark:to-emerald-950">
-      <Header />
-      
+    <>
       <main className="container mx-auto px-4 pt-8 pb-12">
         <div className="max-w-4xl mx-auto">
           {/* Page Header */}
@@ -56,6 +53,6 @@ export default function Schedule() {
           </div>
         </div>
       </main>
-    </div>
+    </>
   );
 }
