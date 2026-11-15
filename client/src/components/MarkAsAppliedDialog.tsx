@@ -1,14 +1,7 @@
 import { useState } from "react";
-import { Check, AlertTriangle, Undo2 } from "lucide-react";
+import { Check, AlertTriangle, Undo2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import ResponsiveSheet from "@/components/ResponsiveSheet";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
@@ -42,19 +35,53 @@ export default function MarkAsAppliedDialog({
   const canApply = !hasInsufficientInventory;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto" data-testid="dialog-mark-applied">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Check className="h-5 w-5 text-primary" />
-            Mark Week {weekNumber} as Applied?
-          </DialogTitle>
-          <DialogDescription>
-            This will record that you've applied these products to your lawn and deduct the quantities from your inventory.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4 py-4">
+    <ResponsiveSheet
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+      title={
+        <span className="flex items-center gap-2">
+          <Check className="h-5 w-5 text-primary" />
+          Mark Week {weekNumber} as Applied?
+        </span>
+      }
+      description="This will record that you've applied these products to your lawn and deduct the quantities from your inventory."
+      contentClassName="sm:max-w-2xl max-h-[85vh] md:overflow-y-auto"
+      data-testid="dialog-mark-applied"
+      footer={
+        <>
+          <Button
+            variant="outline"
+            className="min-h-12"
+            onClick={onClose}
+            disabled={isPending}
+            data-testid="button-cancel-mark-applied"
+          >
+            Cancel
+          </Button>
+          <Button
+            className="min-h-12"
+            onClick={() => onConfirm(adjustments)}
+            disabled={!canApply || isPending}
+            data-testid="button-confirm-mark-applied"
+          >
+            {isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Applying...
+              </>
+            ) : (
+              <>
+                <Check className="h-4 w-4 mr-2" />
+                Mark as Applied
+              </>
+            )}
+          </Button>
+        </>
+      }
+    >
+        <div className="space-y-4 py-2">
           {hasInsufficientInventory && (
             <Alert variant="destructive" data-testid="alert-insufficient-inventory">
               <AlertTriangle className="h-4 w-4" />
@@ -115,41 +142,13 @@ export default function MarkAsAppliedDialog({
           {!hasInsufficientInventory && (
             <div className="bg-accent/10 border border-accent/30 rounded-lg p-3 text-sm">
               <p className="text-muted-foreground">
-                💡 <strong>Tip:</strong> You can undo this action later if needed.
+                <strong>Tip:</strong> You can undo this action later if needed.
               </p>
             </div>
           )}
         </div>
 
-        <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={onClose}
-            disabled={isPending}
-            data-testid="button-cancel-mark-applied"
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={() => onConfirm(adjustments)}
-            disabled={!canApply || isPending}
-            data-testid="button-confirm-mark-applied"
-          >
-            {isPending ? (
-              <>
-                <span className="animate-spin mr-2">⏳</span>
-                Applying...
-              </>
-            ) : (
-              <>
-                <Check className="h-4 w-4 mr-2" />
-                Mark as Applied
-              </>
-            )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    </ResponsiveSheet>
   );
 }
 
@@ -187,14 +186,14 @@ export function AppliedBadge({
         
         <Button
           variant="outline"
-          size="sm"
+          className="min-h-11"
           onClick={onUndo}
           disabled={isUndoing}
           data-testid="button-undo-application"
         >
           {isUndoing ? (
             <>
-              <span className="animate-spin mr-2">⏳</span>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               Undoing...
             </>
           ) : (
