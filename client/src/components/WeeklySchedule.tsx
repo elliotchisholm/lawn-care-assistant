@@ -1,11 +1,12 @@
 import { useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { CheckCircle2, ChevronRight } from "lucide-react";
+import { CheckCircle2, Check, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { type WeeklySchedule as WeeklyScheduleType } from "@shared/schema";
 import { getProductSummaries, groupByMonth } from "@/lib/scheduleUtils";
+import { useAppliedWeeks } from "@/hooks/useAppliedWeeks";
 import { cn } from "@/lib/utils";
 
 interface WeeklyScheduleProps {
@@ -24,6 +25,7 @@ export default function WeeklySchedule({ currentWeek = 1, className = "", onSele
   const { data: schedule, isLoading, error } = useQuery<WeeklyScheduleType[]>({
     queryKey: ["/api/schedule"],
   });
+  const { appliedWeeks } = useAppliedWeeks();
   const currentRef = useRef<HTMLLIElement | null>(null);
 
   useEffect(() => {
@@ -82,6 +84,7 @@ export default function WeeklySchedule({ currentWeek = 1, className = "", onSele
             {weeks.map((entry) => {
               const isCurrent = entry.weekNumber === currentWeek;
               const isRest = entry.isRestWeek === 1;
+              const isApplied = appliedWeeks.has(entry.weekNumber);
               const products = getProductSummaries(entry);
               return (
                 <li key={entry.id} ref={isCurrent ? currentRef : undefined}>
@@ -105,6 +108,12 @@ export default function WeeklySchedule({ currentWeek = 1, className = "", onSele
                           <Badge className="text-xs">
                             <CheckCircle2 className="mr-1 h-3 w-3" />
                             Current
+                          </Badge>
+                        )}
+                        {isApplied && (
+                          <Badge variant="secondary" className="text-xs" data-testid={`badge-applied-${entry.weekNumber}`}>
+                            <Check className="mr-1 h-3 w-3" />
+                            Applied
                           </Badge>
                         )}
                       </span>

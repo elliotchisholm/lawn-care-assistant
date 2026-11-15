@@ -1,9 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
 import { Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import ResponsiveSheet from "@/components/ResponsiveSheet";
-import { useAuth } from "@/hooks/useAuth";
+import { useAppliedWeeks } from "@/hooks/useAppliedWeeks";
 import { getApplicationDays } from "@/lib/scheduleUtils";
 import type { WeeklySchedule } from "@shared/schema";
 
@@ -15,19 +14,7 @@ interface WeekDetailSheetProps {
 }
 
 export default function WeekDetailSheet({ entry, currentWeek, onClose, onOpenInThisWeek }: WeekDetailSheetProps) {
-  const { isAuthenticated, user } = useAuth();
-  const weekNumber = entry?.weekNumber ?? 0;
-
-  const { data: appliedWeek } = useQuery<{ appliedAt: string } | null>({
-    queryKey: ["/api/applied-weeks", weekNumber, user?.id],
-    queryFn: async () => {
-      const res = await fetch(`/api/applied-weeks/${weekNumber}`, { credentials: "include" });
-      if (res.status === 404) return null;
-      if (!res.ok) throw new Error(`Failed to fetch applied week: ${res.statusText}`);
-      return res.json();
-    },
-    enabled: isAuthenticated && !!entry,
-  });
+  const { appliedWeeks } = useAppliedWeeks();
 
   if (!entry) return null;
   const days = getApplicationDays(entry);
@@ -51,7 +38,7 @@ export default function WeekDetailSheet({ entry, currentWeek, onClose, onOpenInT
       <div className="space-y-4">
         <div className="flex flex-wrap gap-2">
           <Badge variant={isRest ? "secondary" : "outline"}>{isRest ? "Rest week" : "Application"}</Badge>
-          {appliedWeek ? (
+          {appliedWeeks.has(entry.weekNumber) ? (
             <Badge data-testid="badge-week-applied">
               <Check className="mr-1 h-3 w-3" />
               Applied

@@ -7,6 +7,7 @@ import { Droplets, Beaker, CheckCircle, XCircle, AlertTriangle, Check } from "lu
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { getPooledStock } from "@/lib/productMatching";
 import { planWeekAdjustments } from "@/lib/weekAdjustments";
+import { appliedWeeksListKey } from "@/hooks/useAppliedWeeks";
 import type { ApplicationDay, InventoryAdjustment } from "@shared/schema";
 import MarkAsAppliedDialog, { AppliedBadge } from "./MarkAsAppliedDialog";
 import { useAuth } from "@/hooks/useAuth";
@@ -101,6 +102,7 @@ export default function ProductCard({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/applied-weeks", weekNumber, user?.id] });
+      queryClient.invalidateQueries({ queryKey: appliedWeeksListKey(user?.id) });
       queryClient.invalidateQueries({ queryKey: ["/api/inventory", user?.id] });
       toast({
         title: "Week marked as applied",
@@ -134,6 +136,7 @@ export default function ProductCard({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/applied-weeks", weekNumber, user?.id] });
+      queryClient.invalidateQueries({ queryKey: appliedWeeksListKey(user?.id) });
       queryClient.invalidateQueries({ queryKey: ["/api/inventory", user?.id] });
       toast({
         title: "Application undone",

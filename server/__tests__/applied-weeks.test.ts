@@ -23,6 +23,54 @@ describe('Applied Weeks API', () => {
     }
   });
 
+  describe('GET /api/applied-weeks', () => {
+    it('returns an empty list when nothing is applied', async () => {
+      const response = await request(app).get('/api/applied-weeks').set(authHeaders);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual([]);
+    });
+
+    it('lists applied weeks in order with week number and date only', async () => {
+      await createTestInventoryItem(testUser.id, 'NZLA All Seasons', 1000, 'g');
+      const adjustments = [{ productName: 'NZLA All Seasons', amountDeducted: 100, unit: 'g', previousQuantity: 1000, newQuantity: 900 }];
+      for (const weekNumber of [9, 3]) {
+        const applied = await request(app).post('/api/applied-weeks').set(authHeaders).send({ weekNumber, adjustments });
+        expect(applied.status).toBe(201);
+      }
+
+      const response = await request(app).get('/api/applied-weeks').set(authHeaders);
+
+      expect(response.status).toBe(200);
+      expect(response.body.map((w: any) => w.weekNumber)).toEqual([3, 9]);
+      expect(Object.keys(response.body[0]).sort()).toEqual(['appliedAt', 'weekNumber']);
+    });
+
+    it('does not include another user\'s applied weeks', async () => {
+      const other = await createTestUser(`aw-other-${Date.now()}`);
+      try {
+        await createTestInventoryItem(other.id, 'NZLA All Seasons', 1000, 'g');
+        const applied = await request(app)
+          .post('/api/applied-weeks')
+          .set(createAuthenticatedRequest(other.id))
+          .send({ weekNumber: 4, adjustments: [{ productName: 'NZLA All Seasons', amountDeducted: 100, unit: 'g', previousQuantity: 1000, newQuantity: 900 }] });
+        expect(applied.status).toBe(201);
+
+        const response = await request(app).get('/api/applied-weeks').set(authHeaders);
+
+        expect(response.body).toEqual([]);
+      } finally {
+        await cleanupTestUser(other.id);
+      }
+    });
+
+    it('returns 401 without authentication', async () => {
+      const response = await request(app).get('/api/applied-weeks');
+
+      expect(response.status).toBe(401);
+    });
+  });
+
   describe('GET /api/applied-weeks/:weekNumber', () => {
     it('returns null for unapplied week', async () => {
       const response = await request(app)
