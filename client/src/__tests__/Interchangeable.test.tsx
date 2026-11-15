@@ -41,9 +41,9 @@ describe('planWeekAdjustments', () => {
     expect(rows[1]).toMatchObject({ productName: 'Wetter 3W', amountToDeduct: 40, currentInventory: 300, newInventory: 260, isInsufficient: false });
   });
 
-  it('uses only the alternative when the primary has no stock', () => {
+  it('uses only the alternative when the primary has no stock, without a zero row for the primary', () => {
     const rows = planWeekAdjustments([day(wetter(100))], [inv('Wetter 3W', '300')], 1);
-    expect(rows.map((r) => [r.productName, r.amountToDeduct])).toEqual([['NZLA Wetter', 0], ['Wetter 3W', 100]]);
+    expect(rows.map((r) => [r.productName, r.amountToDeduct])).toEqual([['Wetter 3W', 100]]);
   });
 
   it('reports the shortfall against the primary when both together are not enough', () => {

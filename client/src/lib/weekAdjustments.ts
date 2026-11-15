@@ -51,14 +51,18 @@ export function planWeekAdjustments(
       const short = required - primaryUse - altUse;
 
       const primaryAmount = round(primaryUse + short);
-      adjustments.push({
-        productName: primary,
-        amountToDeduct: primaryAmount,
-        unit,
-        currentInventory: round(primaryAvailable),
-        newInventory: round(primaryAvailable - primaryAmount),
-        isInsufficient: short > 0,
-      });
+      // Skip a zero row when the alternative covers it: the server creates an inventory row
+      // for every adjusted product, which would add an empty item for the primary.
+      if (!(primaryAmount === 0 && altUse > 0)) {
+        adjustments.push({
+          productName: primary,
+          amountToDeduct: primaryAmount,
+          unit,
+          currentInventory: round(primaryAvailable),
+          newInventory: round(primaryAvailable - primaryAmount),
+          isInsufficient: short > 0,
+        });
+      }
       used.set(keyOf(primary, unit), (used.get(keyOf(primary, unit)) ?? 0) + primaryUse);
 
       if (alt && altUse > 0) {
