@@ -72,7 +72,7 @@ export default function Login() {
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="absolute right-0 top-0 h-12 w-12"
+                className="!absolute right-0 top-0 h-12 w-12"
                 onClick={() => setShowPassword((v) => !v)}
                 aria-label={showPassword ? "Hide password" : "Show password"}
                 aria-pressed={showPassword}

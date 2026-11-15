@@ -242,7 +242,11 @@ export default function ProductCard({
                 {day.products.map((product, productIndex) => {
                   const scaledQuantity = product.quantity * scaleFactor;
                   const inventoryStatus = getInventoryStatus(product.name, scaledQuantity, product.unit);
-                  const statusDisplay = getStatusDisplay(inventoryStatus.status);
+                  // Signed-out visitors have no inventory, so stock status would be misleading
+                  const showStock = isAuthenticated;
+                  const statusDisplay = showStock
+                    ? getStatusDisplay(inventoryStatus.status)
+                    : { icon: null, color: '', bgColor: 'bg-card border-border', textColor: 'text-card-foreground', badge: '' };
                   const StatusIcon = statusDisplay.icon;
                   
                   return (
@@ -259,25 +263,31 @@ export default function ProductCard({
                                 <span className="text-xs opacity-70"> (or {product.alternativeName})</span>
                               )}
                             </p>
-                            <StatusIcon className={`h-4 w-4 ${statusDisplay.color}`} />
+                            {StatusIcon && <StatusIcon className={`h-4 w-4 ${statusDisplay.color}`} />}
                           </div>
                           <div className="flex items-center gap-2 mt-1">
                             <Badge variant={product.type === 'liquid' ? 'default' : product.type === 'granular' ? 'secondary' : 'destructive'} className="text-xs">
                               {product.type}
                             </Badge>
-                            <Badge 
-                              variant={inventoryStatus.status === 'sufficient' ? 'default' : 'destructive'} 
-                              className="text-xs"
-                              data-testid={`badge-stock-${dayIndex}-${productIndex}`}
-                            >
-                              {statusDisplay.badge}
-                            </Badge>
+                            {showStock && (
+                              <Badge 
+                                variant={inventoryStatus.status === 'sufficient' ? 'default' : 'destructive'} 
+                                className="text-xs"
+                                data-testid={`badge-stock-${dayIndex}-${productIndex}`}
+                              >
+                                {statusDisplay.badge}
+                              </Badge>
+                            )}
                           </div>
                           <div className="flex items-center gap-2 mt-2">
-                            <p className="text-sm font-medium" data-testid={`text-current-stock-${dayIndex}-${productIndex}`}>
-                              Stock: {inventoryStatus.currentQuantity}{product.unit}
-                            </p>
-                            <span className="text-sm text-muted-foreground">/</span>
+                            {showStock && (
+                              <>
+                                <p className="text-sm font-medium" data-testid={`text-current-stock-${dayIndex}-${productIndex}`}>
+                                  Stock: {inventoryStatus.currentQuantity}{product.unit}
+                                </p>
+                                <span className="text-sm text-muted-foreground">/</span>
+                              </>
+                            )}
                             <p className="text-sm text-muted-foreground">
                               Need: {scaledQuantity.toFixed(0)}{product.unit}
                             </p>
