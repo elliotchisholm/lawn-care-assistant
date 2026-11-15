@@ -120,7 +120,7 @@ export default function PurchaseRecommendations({ lawnSize }: PurchaseRecommenda
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <h4 className="font-medium text-foreground" data-testid="text-product-name">
-            {rec.productName}
+            {rec.alternativeName ? `${rec.productName} or ${rec.alternativeName}` : rec.productName}
           </h4>
           <AlertTriangle className="h-4 w-4 shrink-0 text-destructive" aria-hidden="true" />
         </div>
